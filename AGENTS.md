@@ -193,3 +193,8 @@ When searching for patterns or text in the codebase via the shell, always use `r
 
 ## :electric_plug: Hardware & Pinouts
 - **Always read `docs/pinouts.md`** before writing hardware-specific code, initializing new GPIO pins, or writing wiring instructions. This file acts as the single source of truth to prevent pin collisions.
+
+## Python Dependencies & Tooling
+- When creating or running Python scripts, **always use the `uv` command** (e.g., `uv run`, `uv add`).
+- Manage all Python dependencies by creating or updating a `pyproject.toml` file.
+- Ensure that the `uv.lock` file is generated or updated whenever dependencies change. Do not rely on `requirements.txt` or standard `pip`.
