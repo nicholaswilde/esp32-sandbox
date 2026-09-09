@@ -190,3 +190,6 @@ When searching for patterns or text in the codebase via the shell, always use `r
 
 ## Sandbox Project Requirements
 - **Every new sandbox project folder** created in this repository must include its own `platformio.ini` file (for building) and a `README.md` (for documentation).
+
+## Hardware & Pinouts
+- **Always read `docs/pinouts.md`** before writing hardware-specific code, initializing new GPIO pins, or writing wiring instructions. This file acts as the single source of truth to prevent pin collisions.
