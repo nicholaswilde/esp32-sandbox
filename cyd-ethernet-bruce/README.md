@@ -21,7 +21,8 @@ This sub-project houses the configurations, setup notes, and wiring references r
 
 Refer directly to the [CYD W5500 wiring diagram](https://wiki.bruce.computer/external-modules/w5500-ethernet-module/) on the Bruce wiki for the exact pinout. 
 
-*Note: The W5500 communicates over SPI. Ensure that your Chip Select (CS), INT, and reset pins match the firmware expectations so they do not conflict with the CYD's internal display or touchscreen SPI buses.*
+> [!NOTE]
+> The W5500 communicates over SPI. Ensure that your Chip Select (CS), INT, and reset pins match the firmware expectations so they do not conflict with the CYD's internal display or touchscreen SPI buses.*
 
 ## :rocket: Building and Flashing
 
