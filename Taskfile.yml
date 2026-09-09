@@ -1,3 +1,4 @@
+---
 version: '3'
 dotenv: ['.env']
 
@@ -6,6 +7,7 @@ tasks:
     desc: List available tasks
     cmds:
       - task --list-all
+    silent: true
 
   init:
     desc: Initialize the workspace by copying .env.example to .env
@@ -30,12 +32,14 @@ tasks:
     deps:
       - build:cyd-ntp-stratum1
       - build:cyd-ethernet-bruce
+      - build:s3-tiny-stories
 
   test:all:
     desc: Run tests for all sandbox projects
     deps:
       - test:cyd-ntp-stratum1
       - test:cyd-ethernet-bruce
+      - test:s3-tiny-stories
 
   build:cyd-ethernet-bruce:
     desc: Build the cyd-ethernet-bruce sandbox project
@@ -58,5 +62,17 @@ tasks:
   test:cyd-ntp-stratum1:
     desc: Run host-native tests for the cyd-ntp-stratum1 sandbox project
     dir: projects/cyd-ntp-stratum1
+    cmds:
+      - pio test -e native
+
+  build:s3-tiny-stories:
+    desc: Build the s3-tiny-stories sandbox project
+    dir: projects/s3-tiny-stories
+    cmds:
+      - pio run
+
+  test:s3-tiny-stories:
+    desc: Run host-native tests for the s3-tiny-stories sandbox project
+    dir: projects/s3-tiny-stories
     cmds:
       - pio test -e native
