@@ -22,6 +22,9 @@ platform = espressif32
 board = esp32dev
 framework = arduino
 monitor_speed = 115200
+
+[env:native]
+platform = native
 """)
 
 with open(f"projects/{project_name}/README.md", "w") as f:
