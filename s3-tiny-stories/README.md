@@ -48,3 +48,7 @@ Open the serial monitor to interact with the model.
 ```bash
 task monitor 
 ```
+
+## :link: References
+
+- https://github.com/slvDev/esp32-ai
