@@ -24,7 +24,7 @@ The model weights must be downloaded and quantized into a binary format that the
 task fetch-model
 ```
 
-:zap: 2. Flash the Model Partition
+### :zap: 2. Flash the Model Partition
 
 The custom `partitions.csv` allocates a large model partition starting at `0x1F0000`. The exported .bin file must be flashed directly to this address.
 
@@ -32,7 +32,7 @@ The custom `partitions.csv` allocates a large model partition starting at `0x1F0
 task flash-model
 ```
 
-:hammer: 3. Build and Flash the Firmware
+### :hammer: 3. Build and Flash the Firmware
 
 Once the model weights are situated in Flash, compile and upload the inference engine.
 
@@ -41,7 +41,7 @@ task build
 task flash
 ```
 
-:rocket: 4. Run
+### :rocket: 4. Run
 
 Open the serial monitor to interact with the model.
 
