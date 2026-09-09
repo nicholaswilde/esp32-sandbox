@@ -1,1 +1,10 @@
- 
+[project]
+name = "pc-tools"
+version = "0.1.0"
+description = "Model export tools for s3-tiny-stories"
+requires-python = ">=3.11"
+dependencies = [
+  "huggingface-hub",
+  "torch",
+  "transformers"
+]
