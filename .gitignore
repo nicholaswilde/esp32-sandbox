@@ -2,3 +2,5 @@
 .codegraph/
 .env
 .pio/
+config.h
+secrets.h
