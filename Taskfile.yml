@@ -7,6 +7,11 @@ tasks:
     cmds:
       - task --list-all
 
+  init:
+    desc: Initialize the workspace by copying .env.example to .env
+    cmds:
+      - cp -n .env.example .env
+
   build:
     desc: Build the active project specified in .env
     dir: projects/{{.CURRENT_PROJECT}}
