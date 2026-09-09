@@ -187,3 +187,6 @@ When searching for patterns or text in the codebase via the shell, always use `r
 - When asked to create an issue, use your best guess to determine if it is a new feature or a bug fix.
 - Prefix the issue title with `[feat]: <description>` or `[bug]: <description>`.
 - Add the `enhancement` or `bug` label to the issue accordingly using the `--label` flag with the `gh` command.
+
+## Sandbox Project Requirements
+- **Every new sandbox project folder** created in this repository must include its own `platformio.ini` file (for building) and a `README.md` (for documentation).
