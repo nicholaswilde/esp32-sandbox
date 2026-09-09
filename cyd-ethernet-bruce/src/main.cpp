@@ -9,8 +9,8 @@ TFT_eSPI tft = TFT_eSPI();
 // Ethernet configuration (Assuming SPI Ethernet like W5500)
 // You may need to change these pins based on how you wire the Ethernet module
 // to the CYD, since the CYD already uses several SPI pins.
-const int ETHERNET_CS_PIN = 22; 
-const int ETHERNET_RST_PIN = 27;
+const int ETHERNET_CS_PIN = 27; 
+const int ETHERNET_INT_PIN = 22; // INT is 22 for Bruce wiring
 
 // MAC address for the Ethernet module
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
@@ -29,13 +29,6 @@ void setupDisplay() {
 void setupEthernet() {
   tft.println("Starting Ethernet...");
   
-  // Optional: Reset the Ethernet module
-  pinMode(ETHERNET_RST_PIN, OUTPUT);
-  digitalWrite(ETHERNET_RST_PIN, LOW);
-  delay(10);
-  digitalWrite(ETHERNET_RST_PIN, HIGH);
-  delay(100);
-
   // Initialize Ethernet with DHCP
   Ethernet.init(ETHERNET_CS_PIN);
   
