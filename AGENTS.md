@@ -82,6 +82,7 @@ rtk prisma              # Prisma without ASCII art (88%)
 rtk ls <path>           # Tree format, compact (65%)
 rtk read <file>         # Code reading with filtering (60%)
 rtk grep <pattern>      # Search grouped by file (75%). Format flags (-c, -l, -L, -o, -Z) run raw.
+rtk rg <pattern>        # Prefer ripgrep (rg) over grep for faster, cleaner, token-saving search output.
 rtk find <pattern>      # Find grouped by directory (70%)
 ```
 
@@ -160,3 +161,7 @@ Instead of using native shell commands that dump massive stdout output into the 
 ## 4. Codegraph (`codegraph`)
 **Usage**: `Call codegraph_explore MCP tool.`
 Instead of running expensive loops of `Grep`, `Find`, and `Read` that bloat the context, make a single natural-language query to `codegraph_explore`. It returns the exact relevant symbols and their call paths grouped by file, heavily capped to keep context clean and tight.
+
+## 5. Ripgrep (`rg`)
+**Usage**: `Always prefer ripgrep (rg) over standard grep.`
+When searching for patterns or text in the codebase via the shell, always use `rg` (or `rtk rg`) instead of `grep`. Ripgrep is token-efficient because it respects `.gitignore` by default and outputs clean, concise results, preventing massive unneeded context bloat.
