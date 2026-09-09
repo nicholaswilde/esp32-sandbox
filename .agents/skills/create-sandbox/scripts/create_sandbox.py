@@ -43,6 +43,20 @@ void loop() {
 }
 """)
 
+os.makedirs(f"projects/{project_name}/test", exist_ok=True)
+with open(f"projects/{project_name}/test/test_main.cpp", "w") as f:
+    f.write("""#include <unity.h>
+
+void test_dummy() { TEST_ASSERT_EQUAL(1, 1); }
+
+int main(int argc, char **argv) {
+    UNITY_BEGIN();
+    RUN_TEST(test_dummy);
+    UNITY_END();
+    return 0;
+}
+""")
+
 print("Updating Taskfile.yml...")
 try:
     with open("Taskfile.yml", "r") as f:
