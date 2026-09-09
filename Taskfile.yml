@@ -1,0 +1,29 @@
+version: '3'
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list-all
+
+  build:all:
+    desc: Build all sandbox projects
+    deps:
+      - build:cyd-ethernet-bruce
+
+  test:all:
+    desc: Run tests for all sandbox projects
+    deps:
+      - test:cyd-ethernet-bruce
+
+  build:cyd-ethernet-bruce:
+    desc: Build the cyd-ethernet-bruce sandbox project
+    dir: cyd-ethernet-bruce
+    cmds:
+      - pio run
+
+  test:cyd-ethernet-bruce:
+    desc: Run host-native tests for the cyd-ethernet-bruce sandbox project
+    dir: cyd-ethernet-bruce
+    cmds:
+      - pio test -e native
