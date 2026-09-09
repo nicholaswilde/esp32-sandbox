@@ -190,6 +190,7 @@ When searching for patterns or text in the codebase via the shell, always use `r
 
 ## Sandbox Project Requirements
 - **Every new sandbox project folder** created in this repository must include its own `platformio.ini` file (for building) and a `README.md` (for documentation).
+- **Update the `Taskfile.yml`**: Whenever a new sandbox project is created, you must add `build:<project-name>` and `test:<project-name>` tasks to the root `Taskfile.yml` and add them to the dependencies of `build:all` and `test:all`.
 
 ## :electric_plug: Hardware & Pinouts
 - **Always read `docs/pinouts.md`** before writing hardware-specific code, initializing new GPIO pins, or writing wiring instructions. This file acts as the single source of truth to prevent pin collisions.
