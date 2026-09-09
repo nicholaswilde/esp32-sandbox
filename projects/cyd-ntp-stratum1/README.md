@@ -1,3 +1,3 @@
-# cyd-ntp-stratum1
+# CYD NTP Stratum1
 
 GPS PPS + W5500
