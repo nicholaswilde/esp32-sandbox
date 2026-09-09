@@ -1,4 +1,5 @@
 version: '3'
+dotenv: ['.env']
 
 tasks:
   default:
@@ -6,24 +7,51 @@ tasks:
     cmds:
       - task --list-all
 
+  build:
+    desc: Build the active project specified in .env
+    dir: projects/{{.CURRENT_PROJECT}}
+    cmds:
+      - pio run
+
+  test:
+    desc: Run host-native tests for the active project specified in .env
+    dir: projects/{{.CURRENT_PROJECT}}
+    cmds:
+      - pio test -e native
+
+
   build:all:
     desc: Build all sandbox projects
     deps:
+      - build:cyd-ntp-stratum1
       - build:cyd-ethernet-bruce
 
   test:all:
     desc: Run tests for all sandbox projects
     deps:
+      - test:cyd-ntp-stratum1
       - test:cyd-ethernet-bruce
 
   build:cyd-ethernet-bruce:
     desc: Build the cyd-ethernet-bruce sandbox project
-    dir: cyd-ethernet-bruce
+    dir: projects/cyd-ethernet-bruce
     cmds:
       - pio run
 
   test:cyd-ethernet-bruce:
     desc: Run host-native tests for the cyd-ethernet-bruce sandbox project
-    dir: cyd-ethernet-bruce
+    dir: projects/cyd-ethernet-bruce
+    cmds:
+      - pio test -e native
+
+  build:cyd-ntp-stratum1:
+    desc: Build the cyd-ntp-stratum1 sandbox project
+    dir: projects/cyd-ntp-stratum1
+    cmds:
+      - pio run
+
+  test:cyd-ntp-stratum1:
+    desc: Run host-native tests for the cyd-ntp-stratum1 sandbox project
+    dir: projects/cyd-ntp-stratum1
     cmds:
       - pio test -e native

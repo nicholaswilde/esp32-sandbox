@@ -9,14 +9,14 @@ if len(sys.argv) < 2:
 project_name = sys.argv[1]
 desc = sys.argv[2] if len(sys.argv) > 2 else f"Sandbox project: {project_name}"
 
-if os.path.exists(project_name):
+if os.path.exists(f"projects/{project_name}"):
     print(f"Error: Directory {project_name} already exists.")
     sys.exit(1)
 
 print(f"Creating project {project_name}...")
-os.makedirs(f"{project_name}/src", exist_ok=True)
+os.makedirs(f"projects/{project_name}/src", exist_ok=True)
 
-with open(f"{project_name}/platformio.ini", "w") as f:
+with open(f"projects/{project_name}/platformio.ini", "w") as f:
     f.write(f"""[env:esp32dev]
 platform = espressif32
 board = esp32dev
@@ -24,10 +24,10 @@ framework = arduino
 monitor_speed = 115200
 """)
 
-with open(f"{project_name}/README.md", "w") as f:
+with open(f"projects/{project_name}/README.md", "w") as f:
     f.write(f"# {project_name}\n\n{desc}\n")
 
-with open(f"{project_name}/src/main.cpp", "w") as f:
+with open(f"projects/{project_name}/src/main.cpp", "w") as f:
     f.write("""#include <Arduino.h>
 
 void setup() {
@@ -55,13 +55,13 @@ try:
     new_tasks = f"""
   build:{project_name}:
     desc: Build the {project_name} sandbox project
-    dir: {project_name}
+    dir: projects/{project_name}
     cmds:
       - pio run
 
   test:{project_name}:
     desc: Run host-native tests for the {project_name} sandbox project
-    dir: {project_name}
+    dir: projects/{project_name}
     cmds:
       - pio test -e native
 """

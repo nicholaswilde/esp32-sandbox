@@ -188,6 +188,10 @@ When searching for patterns or text in the codebase via the shell, always use `r
 - Prefix the issue title with `[feat]: <description>` or `[bug]: <description>`.
 - Add the `enhancement` or `bug` label to the issue accordingly using the `--label` flag with the `gh` command.
 
+## Active Project Context
+- **Always read the `.env` file at the repository root** when starting a new conversation or task to determine the `CURRENT_PROJECT`.
+- Unless explicitly told otherwise, concentrate your efforts (code analysis, editing, building, etc.) on the project specified by `CURRENT_PROJECT` in the `projects/` directory.
+
 ## Sandbox Project Requirements
 - **Every new sandbox project folder** created in this repository must include its own `platformio.ini` file (for building) and a `README.md` (for documentation).
 - **Update the `Taskfile.yml`**: Whenever a new sandbox project is created, you must add `build:<project-name>` and `test:<project-name>` tasks to the root `Taskfile.yml` and add them to the dependencies of `build:all` and `test:all`.

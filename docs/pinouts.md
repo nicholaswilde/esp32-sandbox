@@ -30,3 +30,13 @@ When wiring a W5500 Ethernet module to the CYD (using the Bruce firmware method 
 | **SCS (CS)**| 27 | Custom CS pin for Ethernet |
 | **INT** | 22 | Hardware interrupt |
 | **RST** | NC | Not Connected |
+
+## GPS Module (cyd-ntp-stratum1)
+
+For the Stratum 1 NTP server project (`cyd-ntp-stratum1`), the GPS module is connected using the following pins:
+
+| GPS Pin | CYD / ESP32 Pin | Notes |
+| :--- | :--- | :--- |
+| **TX (Data Out)** | 33 | ESP32 RX (Hardware Serial 2) |
+| **RX (Data In)** | 32 | ESP32 TX (Hardware Serial 2) |
+| **PPS** | 34 | Pulse Per Second (Input-only, interrupt driven) |
