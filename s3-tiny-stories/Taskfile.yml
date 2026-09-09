@@ -1,1 +1,30 @@
+---
+version: '3'
 
+tasks:
+  build:
+    desc: Build the firmware
+    cmds:
+      - pio run
+
+  flash:
+    desc: Flash the firmware to the ESP32-S3
+    cmds:
+      - pio run --target upload
+
+  monitor:
+    desc: Open serial monitor
+    cmds:
+      - pio device monitor
+
+  fetch-model:
+    desc: Download and export the TinyStories weights
+    dir: pc_tools
+    cmds:
+      - uv run python export_model.py
+
+  flash-model:
+    desc: Flash the quantized model binary to the custom partition
+    cmds:
+      - esptool.py --baud 921600 write_flash 0x1F0000 pc_tools/stories15M.bin
+      
