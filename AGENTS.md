@@ -136,3 +136,27 @@ rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
 
 Overall average: **60-90% token reduction** on common development operations.
 <!-- /rtk-instructions -->
+
+# Token Reduction Strategy (Antigravity Plugins & Skills)
+
+To minimize token usage and cognitive load in this repository, leverage the following modes and tools:
+
+## 1. Caveman Mode (`caveman`)
+**Usage**: `Trigger via "/caveman" or requesting token efficiency.`
+When active, output is radically compressed (up to 65% token savings). 
+Drops filler words, pleasantries, and unnecessary conjunctions while preserving full technical accuracy. Use when concise answers and instructions are preferred over prose. 
+
+## 2. Ponytail Mode (`ponytail`)
+**Usage**: `Trigger via "use ponytail" or "/ponytail".`
+Focuses on the minimalist, "lazy senior dev" approach. 
+Avoids over-engineering, unnecessary abstractions, or unrequested boilerplate. Evaluates if new code needs to exist at all (YAGNI). Simplifications are marked with a `// ponytail: [reason] -> [upgrade path]` comment.
+
+## 3. Context-Mode
+**Usage**: `Call context-mode MCP tools (ctx_execute, ctx_batch_execute, ctx_execute_file).`
+Instead of using native shell commands that dump massive stdout output into the conversation history, use context-mode to execute scripts (e.g. JS, Python, bash) inside a sandbox. The script can parse, filter, or summarize the data, returning only the concise extracted answer to the conversation. 
+- Use `ctx_execute_file` for analyzing files without reading the entire file into context.
+- Use `ctx_fetch_and_index` for external web resources.
+
+## 4. Codegraph (`codegraph`)
+**Usage**: `Call codegraph_explore MCP tool.`
+Instead of running expensive loops of `Grep`, `Find`, and `Read` that bloat the context, make a single natural-language query to `codegraph_explore`. It returns the exact relevant symbols and their call paths grouped by file, heavily capped to keep context clean and tight.
