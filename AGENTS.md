@@ -165,3 +165,25 @@ Instead of running expensive loops of `Grep`, `Find`, and `Read` that bloat the 
 ## 5. Ripgrep (`rg`)
 **Usage**: `Always prefer ripgrep (rg) over standard grep.`
 When searching for patterns or text in the codebase via the shell, always use `rg` (or `rtk rg`) instead of `grep`. Ripgrep is token-efficient because it respects `.gitignore` by default and outputs clean, concise results, preventing massive unneeded context bloat.
+
+## Build and Test Commands
+- Build firmware: `pio run -e cyd_28r` or `pio run -e cyd_35c`
+- Run host-native tests: `pio test -e native`
+
+## RTK Command Guidelines
+- **Git Operations**: Prefix `git` commands with `rtk` (e.g., `rtk git status`, `rtk git diff`, `rtk git log`, `rtk git commit`, `rtk git push`).
+- **GitHub CLI**: Prefix `gh` commands with `rtk` (e.g., `rtk gh issue list | cat`, `rtk gh pr status | cat`). Always pipe `gh` commands to `cat` to bypass interactive pagers.
+- **File & Directory Inspection**: Use `rtk ls`, `rtk tree`, `rtk find`, or `rtk read` when listing or reading files to get token-optimized output.
+- **Searching**: Use `rtk grep` or `rtk rg` for line search pattern matching.
+- **Build & Test Outputs**: Use `rtk err` or `rtk test` when running build/test commands to filter output to errors/failures only (e.g. `rtk test pio test -e native`).
+
+## What To Do Next
+- When asked "what to do next" (or similar), **always check the remote repository issues first** using `gh`:
+  ```bash
+  rtk gh issue list | cat
+  ```
+
+## Issue Creation
+- When asked to create an issue, use your best guess to determine if it is a new feature or a bug fix.
+- Prefix the issue title with `[feat]: <description>` or `[bug]: <description>`.
+- Add the `enhancement` or `bug` label to the issue accordingly using the `--label` flag with the `gh` command.
