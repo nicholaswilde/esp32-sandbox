@@ -1,4 +1,4 @@
-# CYD NTP Stratum1
+# :alarm_clock: CYD NTP Stratum1
 
 GPS PPS + W5500
 
