@@ -1,4 +1,4 @@
-# :book: S3 Tiny Stories
+# :book: S3 Tiny Stories :robot:
 
 This project runs a quantized language model locally on an ESP32-S3. It utilizes a C-based inference engine (based on `llama2.c`) to generate text from the TinyStories dataset entirely offline.
 
