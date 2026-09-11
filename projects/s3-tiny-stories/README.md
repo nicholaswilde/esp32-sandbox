@@ -49,6 +49,8 @@ Open the serial monitor to interact with the model.
 task monitor 
 ```
 
+## :wrench: Troubleshooting
+
 ## :link: References
 
 - https://github.com/slvDev/esp32-ai
