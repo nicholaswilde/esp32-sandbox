@@ -33,3 +33,5 @@ If compiling Bruce from source to modify the pinout or enable the module nativel
 task build
 task flash
 ```
+
+## :wrench: Troubleshooting
