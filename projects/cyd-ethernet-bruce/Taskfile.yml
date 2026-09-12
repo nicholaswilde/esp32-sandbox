@@ -1,0 +1,23 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build the cyd-ethernet-bruce firmware
+    cmds:
+      - pio run
+
+  upload:
+    desc: Upload the firmware to the CYD board
+    cmds:
+      - pio run --target upload
+
+  monitor:
+    desc: Open the serial monitor
+    cmds:
+      - pio device monitor
+
+  dev:
+    desc: Build, upload, and monitor
+    cmds:
+      - task: upload
+      - task: monitor
