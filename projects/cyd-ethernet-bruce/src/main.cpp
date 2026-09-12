@@ -1,23 +1,20 @@
+#ifdef ARDUINO
 #include <Arduino.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
 #include <Ethernet.h>
 
-// Initialize the TFT display
 TFT_eSPI tft = TFT_eSPI();
 
-// Ethernet configuration (Assuming SPI Ethernet like W5500)
-// You may need to change these pins based on how you wire the Ethernet module
-// to the CYD, since the CYD already uses several SPI pins.
 const int ETHERNET_CS_PIN = 27; 
-const int ETHERNET_INT_PIN = 22; // INT is 22 for Bruce wiring
+const int ETHERNET_INT_PIN = 22; 
 
-// MAC address for the Ethernet module
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+bool ethernetConnected = false;
 
 void setupDisplay() {
   tft.init();
-  tft.setRotation(1); // Landscape
+  tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setTextSize(2);
@@ -27,69 +24,114 @@ void setupDisplay() {
 }
 
 void setupEthernet() {
-  tft.println("Starting Ethernet...");
+  Serial.println("Starting Ethernet configuration...");
   
-  // Initialize Ethernet with DHCP
+  pinMode(ETHERNET_CS_PIN, OUTPUT);
+  digitalWrite(ETHERNET_CS_PIN, HIGH);
+  
+  // Pull SD card CS high just in case it's sharing the bus and interfering
+  pinMode(5, OUTPUT);
+  digitalWrite(5, HIGH);
+  
+  delay(250); 
+  
+  // Initialize the SPI bus for Ethernet using the ACTUAL SD Card slot pins
+  // SCK=18, MISO=19, MOSI=23
+  SPI.begin(18, 19, 23, -1);
+  
+  // --- RAW SPI DIAGNOSTIC TEST ---
+  Serial.println("Running low-speed SPI diagnostic on W5500...");
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+  digitalWrite(ETHERNET_CS_PIN, LOW);
+  SPI.transfer(0x00); // High address byte
+  SPI.transfer(0x39); // Low address byte (0x0039 = Version Register)
+  SPI.transfer(0x00); // Control byte (Read, Block 0)
+  byte version = SPI.transfer(0x00); // Read data
+  digitalWrite(ETHERNET_CS_PIN, HIGH);
+  SPI.endTransaction();
+  
+  Serial.print("W5500 Version Register (Expected 0x04): 0x");
+  if (version < 0x10) Serial.print("0");
+  Serial.println(version, HEX);
+  
+  if (version == 0x00 || version == 0xFF) {
+    Serial.println("DIAGNOSTIC FAILED: The W5500 is not responding at all.");
+    Serial.println("This is 100% a physical issue (crossed wires, floating RST, or bad power).");
+  } else if (version == 0x04) {
+    Serial.println("DIAGNOSTIC PASSED: SPI is working! The issue is library speed/config.");
+  } else {
+    Serial.println("DIAGNOSTIC UNKNOWN: Received garbage data. Check wire length/noise.");
+  }
+  // -------------------------------
+
   Ethernet.init(ETHERNET_CS_PIN);
   
+  Serial.println("Calling Ethernet.begin()...");
   if (Ethernet.begin(mac) == 0) {
-    tft.setTextColor(TFT_RED, TFT_BLACK);
-    tft.println("Failed to configure Ethernet using DHCP");
-    // Check for Ethernet hardware present
+    Serial.println("Failed to configure Ethernet using DHCP");
+    
     if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-      tft.println("Ethernet shield was not found.");
+      Serial.println("Error: Ethernet shield was not found. (SPI/Wiring issue)");
     } else if (Ethernet.linkStatus() == LinkOFF) {
-      tft.println("Ethernet cable is not connected.");
+      Serial.println("Error: Ethernet cable is not connected.");
     }
   } else {
-    tft.setTextColor(TFT_GREEN, TFT_BLACK);
-    tft.println("Ethernet connected!");
-    tft.print("IP: ");
-    tft.println(Ethernet.localIP());
+    ethernetConnected = true;
+    Serial.println("Ethernet connected successfully!");
+    Serial.print("IP: ");
+    Serial.println(Ethernet.localIP());
   }
 }
 
 void setup() {
   Serial.begin(115200);
+  while(!Serial) { delay(10); }
   
-  // Set up the display
+  Serial.println("\n--- Booting CYD Sandbox ---");
+  
+  // 1. Initialize Ethernet FIRST before the TFT grabs the SPI bus
+  setupEthernet();
+  
+  // 2. Now initialize the TFT
   setupDisplay();
   
-  delay(2000); // Give the user time to read the screen
-  
-  // Set up the Ethernet
-  setupEthernet();
-}
-
-void loop() {
-  // Main logic for the sandbox
-  // e.g., handling network requests, updating display
-  
-  switch (Ethernet.maintain()) {
-    case 1:
-      // renewed fail
-      Serial.println("Error: renewed fail");
-      break;
-    case 2:
-      // renewed success
-      Serial.println("Renewed success");
-      Serial.print("My IP address: ");
-      Serial.println(Ethernet.localIP());
-      break;
-    case 3:
-      // rebind fail
-      Serial.println("Error: rebind fail");
-      break;
-    case 4:
-      // rebind success
-      Serial.println("Rebind success");
-      Serial.print("My IP address: ");
-      Serial.println(Ethernet.localIP());
-      break;
-    default:
-      // nothing happened
-      break;
+  if (ethernetConnected) {
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    tft.println("Ethernet connected!");
+    tft.print("IP: ");
+    tft.println(Ethernet.localIP());
+  } else {
+    tft.setTextColor(TFT_RED, TFT_BLACK);
+    tft.println("Ethernet Failed!");
   }
   
   delay(1000);
 }
+
+void loop() {
+  if (ethernetConnected) {
+    switch (Ethernet.maintain()) {
+      case 1:
+        Serial.println("Error: renewed fail");
+        break;
+      case 2:
+        Serial.println("Renewed success");
+        break;
+      case 3:
+        Serial.println("Error: rebind fail");
+        break;
+      case 4:
+        Serial.println("Rebind success");
+        break;
+      default:
+        break;
+    }
+  } else {
+    // If we never connected, just wait and maybe we can try restarting or alerting the user
+    delay(5000);
+    Serial.println("Waiting for Ethernet connection...");
+  }
+  
+  delay(1000);
+}
+#endif
