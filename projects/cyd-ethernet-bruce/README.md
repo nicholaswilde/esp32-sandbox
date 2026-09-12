@@ -19,10 +19,30 @@ This sub-project houses the configurations, setup notes, and wiring references r
 
 ## :electric_plug: Wiring
 
-Refer directly to the [CYD W5500 wiring diagram](https://wiki.bruce.computer/external-modules/w5500-ethernet-module/) on the Bruce wiki for the exact pinout. 
+The W5500 communicates with the ESP32 over SPI. According to the repository's central pinout reference in [`docs/pinouts.md`](../../docs/pinouts.md), the wiring connects via an SD card sniffer/breakout ribbon adapter for SPI lines and the CYD extended header for control pins:
+
+| W5500 Pin | CYD / ESP32 Pin | Connection Point / Notes |
+| :--- | :--- | :--- |
+| **GND** | GND | SD Sniffer / CYD GND |
+| **3V3** | 3V3 / VCC | SD Sniffer / CYD 3.3V power |
+| **SCLK** | 14 (CLK) | SD Sniffer CLK line |
+| **MOSI** | 13 (CMD) | SD Sniffer CMD line |
+| **MISO** | 12 (DAT0) | SD Sniffer DAT0 line |
+| **SCS (CS)** | 27 | CYD Extended Header (CN1) - Dedicated Ethernet Chip Select |
+| **INT** | 22 | CYD Extended Header (CN1) - Hardware Interrupt |
+| **RST** | NC | Not Connected (internally pulled up or tied to EN) |
+
+### Wiring Details & Tips
+
+1. **SD Card Sniffer**:
+   - Using a MicroSD sniffer or breakout ribbon inserted into the CYD's TF card slot exposes the SPI bus (`SCLK`, `MOSI`, `MISO`) along with power (`3V3`, `GND`) without needing to solder directly to surface-mount display pins.
+2. **Dedicated Chip Select & Interrupt**:
+   - Connect **SCS (CS)** to **GPIO 27** and **INT** to **GPIO 22** on the CYD's 4-pin expansion connector (CN1/P3).
+3. **Bus Contention Prevention**:
+   - If using a board setup where the onboard SD slot shares SPI lines, ensure SD Card CS (**GPIO 5**) is held `HIGH` so it does not conflict with W5500 Ethernet SPI traffic.
 
 > [!NOTE]
-> The W5500 communicates over SPI. Ensure that your Chip Select (CS), INT, and reset pins match the firmware expectations so they do not conflict with the CYD's internal display or touchscreen SPI buses.*
+> Refer directly to [`docs/pinouts.md`](../../docs/pinouts.md) and the [CYD W5500 wiring diagram](https://wiki.bruce.computer/external-modules/w5500-ethernet-module/) on the Bruce wiki for additional hardware details.
 
 ## :rocket: Building and Flashing
 
