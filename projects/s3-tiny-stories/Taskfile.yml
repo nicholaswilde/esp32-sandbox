@@ -5,12 +5,12 @@ tasks:
   build:
     desc: Build the firmware
     cmds:
-      - pio run
+      - pio run -e esp32-s3-devkitc-1
 
   flash:
     desc: Flash the firmware to the ESP32-S3
     cmds:
-      - pio run --target upload
+      - pio run -e esp32-s3-devkitc-1 --target upload
 
   monitor:
     desc: Open serial monitor
@@ -18,13 +18,23 @@ tasks:
       - pio device monitor
 
   fetch-model:
-    desc: Download and export the TinyStories weights
+    desc: Download the pre-built TinyStories model and tokenizer from slvDev/esp32-ai-tinystories
+    dir: pc_tools
+    cmds:
+      - uv run --no-project --with 'huggingface-hub' python -c "from huggingface_hub import hf_hub_download; hf_hub_download(repo_id='slvDev/esp32-ai-tinystories', filename='model.bin', local_dir='.'); hf_hub_download(repo_id='slvDev/esp32-ai-tinystories', filename='tokenizer.json', local_dir='.')"
+
+  fetch-model-tinyllamas:
+    desc: Download and export the TinyStories weights from TinyLlamas (legacy)
     dir: pc_tools
     cmds:
       - uv run python export_model.py
 
   flash-model:
-    desc: Flash the quantized model binary to the custom partition
+    desc: Flash the pre-built model.bin to the model partition at 0x110000
     cmds:
-      - esptool.py --baud 921600 write_flash 0x1F0000 pc_tools/stories15M.bin
-      
+      - esptool --baud 921600 --port /dev/ttyACM0 write-flash 0x110000 pc_tools/model.bin
+
+  generate-vocab:
+    desc: Generate src/generated/vocab.h from the tokenizer
+    cmds:
+      - uv run --no-project --with 'tokenizers==0.23.1' python /home/nicholas/git/slvDev/esp32-ai/firmware/esp32_tinystories/tools/generate_vocab.py --tokenizer pc_tools/tokenizer.json --out src/generated/vocab.h
