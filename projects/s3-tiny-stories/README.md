@@ -1,8 +1,15 @@
 # :book: S3 Tiny Stories :robot:
 
-This project runs a quantized language model locally on an ESP32-S3. It utilizes a C-based inference engine (based on `llama2.c`) to generate text from the TinyStories dataset entirely offline.
+This project runs a quantized language model locally on an ESP32-S3. It utilizes a lightweight C inference engine (adapted from `llama2.c`) to generate text from the TinyStories dataset entirely offline.
 
-Due to the size of the model weights, this project requires an ESP32-S3 with at least 16MB of Flash and PSRAM enabled. The weights are stored in a custom Flash partition and are accessed iteratively during inference to bypass RAM limitations.
+Due to the size of the model weights, this project requires an ESP32-S3 with at least 16MB of Flash and Octal PSRAM (such as the ESP32-S3-DevKitC-1-N16R8). The weights are quantized to INT4 (~8.1 MB) and stored in a dedicated Flash partition mapped directly into address space via `esp_partition_mmap`.
+
+## :sparkles: Features
+
+*   **Model**: TinyStories 15M (6 layers, 6 heads, 288 embedding dimension, 768 hidden dimension, 32k vocabulary).
+*   **Quantization**: INT4 grouped quantization (`group_size = 64`) with interleaved FP16 scales.
+*   **Sampling**: Temperature (`temperature = 0.9`) and Top-P (`top_p = 0.9`) sampling using an efficient in-place random generator and PSRAM probability buffer.
+*   **Tokenizer**: SentencePiece 32k vocabulary with full UTF-8 byte-fallback support directly decoded on-device.
 
 ## :clipboard: Prerequisites
 
@@ -14,19 +21,21 @@ Ensure you have the following tools installed on your host machine:
 
 ## :gear: Setup Workflow
 
-The build and deployment process is split into two phases: preparing the model weights and flashing the firmware.
+The build and deployment process involves preparing the quantized model weights, flashing them to the custom flash partition, and flashing the firmware.
 
-### :arrow_down: 1. Fetch and Export the Model
+### :arrow_down: 1. Fetch and Quantize the Model
 
-The model weights must be downloaded and quantized into a binary format that the ESP32 can read. We use `uv` to handle the Python environment automatically.
+Download the pre-trained TinyStories 15M weights and quantize them to the INT4 format:
 
 ```bash
-task fetch-model
+task quantize
 ```
+
+*(Alternatively, pre-exported weights can be downloaded with `task fetch-model`)*.
 
 ### :zap: 2. Flash the Model Partition
 
-The custom `partitions.csv` allocates a large model partition starting at `0x1F0000`. The exported .bin file must be flashed directly to this address.
+The custom `partitions.csv` allocates a large model partition starting at offset `0x110000` (subtype `0x40`, size `0xEE0000`). Flash the quantized binary directly to this address:
 
 ```bash
 task flash-model
@@ -34,23 +43,40 @@ task flash-model
 
 ### :hammer: 3. Build and Flash the Firmware
 
-Once the model weights are situated in Flash, compile and upload the inference engine.
+Compile and upload the C inference engine to the ESP32-S3:
 
 ```bash
 task build
 task flash
 ```
 
-### :rocket: 4. Run
+### :rocket: 4. Run & Monitor
 
-Open the serial monitor to interact with the model.
+Open the serial monitor to view text generation:
 
 ```bash
-task monitor 
+task monitor
 ```
+
+> **Tip:** If the monitor connects after the board finishes its boot priming sequence, press the physical **RST** button on the ESP32-S3 board to restart generation from the beginning.
 
 ## :wrench: Troubleshooting
 
+*   **Serial Port Busy (`[Errno 11] Resource temporarily unavailable`)**:
+    If `task flash` fails because `/dev/ttyACM0` is locked, close any active `task monitor` or serial terminals:
+    ```bash
+    pkill -f "pio device monitor"
+    ```
+*   **Missing or Corrupted Characters**:
+    If token strings appear without spaces or with corrupted byte tokens, regenerate the vocabulary header from `pc_tools/tokenizer.json`:
+    ```bash
+    task generate-vocab
+    task flash
+    ```
+*   **PSRAM Allocation Failures**:
+    Ensure `platformio.ini` has `board_build.arduino.memory_type = qio_opi` and `-D BOARD_HAS_PSRAM` enabled. The board must have functional Octal PSRAM.
+
 ## :link: References
 
-- https://github.com/slvDev/esp32-ai
+*   [karpathy/llama2.c](https://github.com/karpathy/llama2.c) - Inference Llama 2 in one file of pure C
+*   [slvDev/esp32-ai](https://github.com/slvDev/esp32-ai) - On-device AI inference on ESP32

@@ -37,7 +37,7 @@ tasks:
   generate-vocab:
     desc: Generate src/generated/vocab.h from the tokenizer
     cmds:
-      - uv run --no-project --with 'tokenizers==0.23.1' python /home/nicholas/git/slvDev/esp32-ai/firmware/esp32_tinystories/tools/generate_vocab.py --tokenizer pc_tools/tokenizer.json --out src/generated/vocab.h
+      - uv run python pc_tools/generate_vocab.py
 
   quantize:
     desc: Quantize the downloaded TinyLlamas model to INT4
