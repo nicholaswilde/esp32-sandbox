@@ -21,7 +21,7 @@
 // No display wired up.
 #define USE_DISPLAY 0
 
-static const int PROMPT_IDS[] = {9038, 2501, 263, 931}; // "Once upon a time"
+static const int PROMPT_IDS[] = {1, 9038, 2501, 263, 931}; // <s> Once upon a time
 static const int N_GENERATE = 200;
 
 Model model;
@@ -129,6 +129,92 @@ static void blink(uint8_t g) {
 #endif
 }
 
+
+// ---- sampling --------------------------------------------------------------
+typedef struct {
+  float prob;
+  int index;
+} ProbIndex;
+
+static uint64_t rng_seed = 1337;
+static unsigned int random_u32() {
+  rng_seed ^= rng_seed >> 12;
+  rng_seed ^= rng_seed << 25;
+  rng_seed ^= rng_seed >> 27;
+  return (rng_seed * 0x2545F4914F6CDD1Dull) >> 32;
+}
+static float random_f32() {
+  return (random_u32() >> 8) / 16777216.0f;
+}
+
+static int compare_probindex(const void* a, const void* b) {
+  ProbIndex* a_ = (ProbIndex*) a;
+  ProbIndex* b_ = (ProbIndex*) b;
+  if (a_->prob > b_->prob) return -1;
+  if (a_->prob < b_->prob) return 1;
+  return 0;
+}
+
+static int sample(float* logits, int n, float temperature, float topp, ProbIndex* probindex) {
+  if (temperature == 0.0f) {
+    int best = 0; float best_val = -1e30f;
+    for (int i = 0; i < n; i++) {
+      if (logits[i] > best_val) { best_val = logits[i]; best = i; }
+    }
+    return best;
+  }
+
+  // Softmax
+  float max_val = -1e30f;
+  for (int i = 0; i < n; i++) {
+    if (logits[i] > max_val) max_val = logits[i];
+  }
+  float sum = 0.0f;
+  for (int i = 0; i < n; i++) {
+    logits[i] = expf((logits[i] - max_val) / temperature);
+    sum += logits[i];
+  }
+  for (int i = 0; i < n; i++) {
+    logits[i] /= sum;
+  }
+
+  // Top-p or standard temperature sampling
+  if (topp <= 0.0f || topp >= 1.0f) {
+    float r = random_f32();
+    float cdf = 0.0f;
+    for (int i = 0; i < n; i++) {
+      cdf += logits[i];
+      if (r < cdf) return i;
+    }
+    return n - 1; // Fallback
+  }
+
+  // Top-p sampling
+  for (int i = 0; i < n; i++) {
+    probindex[i].index = i;
+    probindex[i].prob = logits[i];
+  }
+  qsort(probindex, n, sizeof(ProbIndex), compare_probindex);
+
+  float cumsum = 0.0f;
+  int last_idx = n - 1;
+  for (int i = 0; i < n; i++) {
+    cumsum += probindex[i].prob;
+    if (cumsum >= topp) {
+      last_idx = i;
+      break;
+    }
+  }
+
+  float r = random_f32() * cumsum;
+  float cdf = 0.0f;
+  for (int i = 0; i <= last_idx; i++) {
+    cdf += probindex[i].prob;
+    if (r < cdf) return probindex[i].index;
+  }
+  return probindex[last_idx].index;
+}
+
 // Emit one token to serial output.
 static void emit(int tok) {
   if (tok >= VOCAB_N) return;
@@ -227,18 +313,19 @@ void setup() {
 
   for (int i = 0; i < n_prompt; i++) {   // prime with the prompt
     tok = PROMPT_IDS[i];
-    emit(tok); Serial.printf(" [%d] ", tok);
+    emit(tok);
     llm_forward(&model, tok, pos++, &s);
   }
 
   Serial.println("\n[DEBUG] Priming finished"); llm_profile_reset(&s);
 
+  ProbIndex* probindex = (ProbIndex*)ps_or_die(model.out_vocab * sizeof(ProbIndex), "probindex");
+
   Serial.printf("\n[DEBUG] seq_len=%d pos=%d N_GENERATE=%d\n", model.c.seq_len, pos, N_GENERATE); int64_t t_start = esp_timer_get_time();
   for (int step = 0; step < N_GENERATE && pos < model.c.seq_len; step++) {
-    int best = 0; float bv = -1e30f;
-    for (int v = 0; v < model.out_vocab; v++)
-      if (s.logits[v] > bv) { bv = s.logits[v]; best = v; }
-    tok = best;
+    float temperature = 0.9f;
+    float top_p = 0.9f;
+    tok = sample(s.logits, model.out_vocab, temperature, top_p, probindex);
     emit(tok);
     if (tok == 2) break;
     blink((step & 1) ? 40 : 8);
