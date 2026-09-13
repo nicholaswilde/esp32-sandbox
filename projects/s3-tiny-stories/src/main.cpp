@@ -21,7 +21,7 @@
 // No display wired up.
 #define USE_DISPLAY 0
 
-static const int PROMPT_IDS[] = {433, 447, 259, 405}; // "Once upon a time"
+static const int PROMPT_IDS[] = {9038, 2501, 263, 931}; // "Once upon a time"
 static const int N_GENERATE = 200;
 
 Model model;
@@ -161,9 +161,9 @@ void setup() {
     return;
   }
   Cfg *c = &model.c;
-  Serial.printf("model: Vin=%d Vout=%d D=%d L=%d H=%d F=%d P=%d  (mapped %.1f MB)\n",
+  Serial.printf("model: Vin=%d Vout=%d D=%d L=%d H=%d F=%d P=%d  (mapped %.1f MB)\\n",
                 c->vocab, model.out_vocab, c->dim, c->n_layers, c->n_heads,
-                c->ffn, 0, part->size / 1e6);
+                c->ffn, c->group, part->size / 1e6);
 
   // Sanity-check vocab table vs model header.
   if (VOCAB_N != model.out_vocab) {
@@ -180,7 +180,7 @@ void setup() {
 
   // Stage every per-position tensor to int8 in PSRAM.
   int want = llm_core_stage_count(&model);
-  int staged = llm_stage_core_int8_alloc(&model, ps);
+  int staged = 0; if (model.c.group == 0) { staged = llm_stage_core_int8_alloc(&model, ps); } else { Serial.println("Skipping PSRAM staging for INT4 model"); }
   if (model.c.group == 0 && staged != want) {
     Serial.printf("FATAL: staged %d/%d core tensors\n", staged, want);
     while (1) delay(1000);
@@ -188,12 +188,13 @@ void setup() {
   // Stage the tied output head too (85% of dense MACs).
   {
     void *b = heap_caps_malloc(llm_stage_int8_bytes(&model.out_head), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    if (b) 
-    llm_stage_int8(&model.out_head, b);
-    ++staged;
+    if (b) {
+      llm_stage_int8(&model.out_head, b);
+      ++staged;
+    }
   }
-  Serial.printf("weights-> PSRAM  %d tensors int8, %.2f MB allocated\n",
-                staged, psram_used / 1048576.0);
+  Serial.printf("weights-> PSRAM  %d tensors int8, %.2f MB allocated (out_head %d x %d)\\n",
+                staged, psram_used / 1048576.0, model.out_head.rows, model.out_head.cols);
 
   main_h = xTaskGetCurrentTaskHandle();
   if (xTaskCreatePinnedToCore(worker_main, "mv", 4096, NULL, 2, &worker_h, 0) == pdPASS) {
@@ -226,19 +227,20 @@ void setup() {
 
   for (int i = 0; i < n_prompt; i++) {   // prime with the prompt
     tok = PROMPT_IDS[i];
-    emit(tok);
+    emit(tok); Serial.printf(" [%d] ", tok);
     llm_forward(&model, tok, pos++, &s);
   }
 
-  llm_profile_reset(&s);
+  Serial.println("\n[DEBUG] Priming finished"); llm_profile_reset(&s);
 
-  int64_t t_start = esp_timer_get_time();
+  Serial.printf("\n[DEBUG] seq_len=%d pos=%d N_GENERATE=%d\n", model.c.seq_len, pos, N_GENERATE); int64_t t_start = esp_timer_get_time();
   for (int step = 0; step < N_GENERATE && pos < model.c.seq_len; step++) {
     int best = 0; float bv = -1e30f;
     for (int v = 0; v < model.out_vocab; v++)
       if (s.logits[v] > bv) { bv = s.logits[v]; best = v; }
     tok = best;
     emit(tok);
+    if (tok == 2) break;
     blink((step & 1) ? 40 : 8);
 
     int64_t d0 = esp_timer_get_time();

@@ -89,8 +89,7 @@ typedef struct __attribute__((packed)) {
 
 // Advance a cursor over the file, binding one quant tensor. Reads the per-tensor
 // group prefix, then ragged codes + fp16 scales.
-static const uint8_t *bind_q(const uint8_t *p, QT *t, int rows, int cols) {
-  int32_t group; memcpy(&group, p, 4); p += 4;
+static const uint8_t *bind_q(const uint8_t *p, QT *t, int rows, int cols, int group) {
   t->rows = rows; t->cols = cols; t->group = group;
   t->n_groups = (cols + group - 1) / group;
   t->row_bytes = (cols + 1) / 2;
@@ -330,17 +329,18 @@ static int llm_load(const uint8_t *base, Model *m) {
   // Wait, export_model.py wrote it per tensor!
   
 
-  p = bind_q(p, &m->tok_emb, V, D);
+  int G = m->c.group;
+  p = bind_q(p, &m->tok_emb, V, D, G);
   
   for (int i = 0; i < L; i++) p = bind_f(p, &m->attn_norm[i], D);
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->wq[i], D, D);
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->wk[i], D, D); // assume n_kv_heads == n_heads
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->wv[i], D, D);
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->wo[i], D, D);
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->wq[i], D, D, G);
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->wk[i], D, D, G); // assume n_kv_heads == n_heads
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->wv[i], D, D, G);
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->wo[i], D, D, G);
   for (int i = 0; i < L; i++) p = bind_f(p, &m->ffn_norm[i], D);
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->w1[i], F, D);
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->w2[i], D, F);
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->w3[i], F, D);
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->w1[i], F, D, G);
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->w2[i], D, F, G);
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->w3[i], F, D, G);
   
   p = bind_f(p, &m->out_norm, D);
   /* Tied: the head is the FIRST out_vocab rows of the token embedding. The
@@ -351,7 +351,7 @@ static int llm_load(const uint8_t *base, Model *m) {
     m->out_head = m->tok_emb;
     m->out_head.rows = m->out_vocab;
   } else {
-    p = bind_q(p, &m->out_head, m->out_vocab, D);
+    p = bind_q(p, &m->out_head, m->out_vocab, D, G);
   }
   m->image_bytes = (size_t)(p - base);
   return 0;
@@ -452,7 +452,7 @@ static void llm_forward(Model *m, int token, int pos, Scratch *s) {
   deq_row(&m->tok_emb, token, s->x);           // embedding
 
   // RoPE frequencies
-  float *rope_c = s->tmpP, *rope_s = s->tmpP + Dh / 2;
+  float rope_c[128], rope_s[128];
   for (int i = 0; i < Dh / 2; i++) {
     float freq = powf(m->c.rope_theta, -2.f * i / Dh);
     rope_c[i] = cosf(pos * freq);

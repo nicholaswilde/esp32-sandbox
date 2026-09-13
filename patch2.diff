@@ -1,0 +1,22 @@
+--- /home/nicholas/git/nicholaswilde/esp32-sandbox/projects/s3-tiny-stories/src/main.cpp
++++ /home/nicholas/git/nicholaswilde/esp32-sandbox/projects/s3-tiny-stories/src/main.cpp
+@@ -174,10 +174,15 @@
+ 
+   // Stage every per-position tensor to int8 in PSRAM.
+   int want = llm_core_stage_count(&model);
+-  int staged = llm_stage_core_int8_alloc(&model, ps);
+-  if (model.c.group == 0 && staged != want) {
+-    Serial.printf("FATAL: staged %d/%d core tensors\n", staged, want);
+-    while (1) delay(1000);
++  int staged = 0;
++  if (model.c.group == 0) {
++    staged = llm_stage_core_int8_alloc(&model, ps);
++    if (staged != want) {
++      Serial.printf("FATAL: staged %d/%d core tensors\n", staged, want);
++      while (1) delay(1000);
++    }
++  } else {
++    Serial.println("Skipping PSRAM staging for INT4 model");
+   }
+   // Stage the tied output head too (85% of dense MACs).
+   {

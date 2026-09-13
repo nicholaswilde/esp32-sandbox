@@ -193,61 +193,52 @@ def export_model(out_path: str = "stories15M.bin"):
         )
         total_bytes += serialize(f, rms_att)
 
-        # 3. wq  [n_layers × dim × dim]  — no permutation needed for native format
+        # 3. wq
         print("  Writing wq …")
-        wq = torch.stack(
-            [sd[f"layers.{i}.attention.wq.weight"] for i in range(N_LAYERS)]
-        )
-        total_bytes += serialize_q4(f, wq, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, wq)
+        for i in range(N_LAYERS):
+            tensor = sd[f"layers.{i}.attention.wq.weight"]
+            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
 
-        # 4. wk  [n_layers × dim × dim]
+        # 4. wk
         print("  Writing wk …")
-        wk = torch.stack(
-            [sd[f"layers.{i}.attention.wk.weight"] for i in range(N_LAYERS)]
-        )
-        total_bytes += serialize_q4(f, wk, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, wk)
+        for i in range(N_LAYERS):
+            tensor = sd[f"layers.{i}.attention.wk.weight"]
+            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
 
-        # 5. wv  [n_layers × dim × dim]
+        # 5. wv
         print("  Writing wv …")
-        wv = torch.stack(
-            [sd[f"layers.{i}.attention.wv.weight"] for i in range(N_LAYERS)]
-        )
-        total_bytes += serialize_q4(f, wv, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, wv)
+        for i in range(N_LAYERS):
+            tensor = sd[f"layers.{i}.attention.wv.weight"]
+            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
 
-        # 6. wo  [n_layers × dim × dim]
+        # 6. wo
         print("  Writing wo …")
-        wo = torch.stack(
-            [sd[f"layers.{i}.attention.wo.weight"] for i in range(N_LAYERS)]
-        )
-        total_bytes += serialize_q4(f, wo, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, wo)
+        for i in range(N_LAYERS):
+            tensor = sd[f"layers.{i}.attention.wo.weight"]
+            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
 
-        # 7. rms_ffn_weight  [n_layers × dim]
+        # 7. rms_ffn_weight
         print("  Writing rms_ffn_weight …")
-        rms_ffn = torch.stack(
-            [sd[f"layers.{i}.ffn_norm.weight"] for i in range(N_LAYERS)]
-        )
-        total_bytes += serialize(f, rms_ffn)
+        for i in range(N_LAYERS):
+            total_bytes += serialize(f, sd[f"layers.{i}.ffn_norm.weight"])
 
-        # 8. w1  [n_layers × hidden_dim × dim]
+        # 8. w1
         print("  Writing w1 …")
-        w1 = torch.stack(
-            [sd[f"layers.{i}.feed_forward.w1.weight"] for i in range(N_LAYERS)]
-        )
-        total_bytes += serialize_q4(f, w1, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, w1)
+        for i in range(N_LAYERS):
+            tensor = sd[f"layers.{i}.feed_forward.w1.weight"]
+            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
 
-        # 9. w2  [n_layers × dim × hidden_dim]
+        # 9. w2
         print("  Writing w2 …")
-        w2 = torch.stack(
-            [sd[f"layers.{i}.feed_forward.w2.weight"] for i in range(N_LAYERS)]
-        )
-        total_bytes += serialize_q4(f, w2, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, w2)
+        for i in range(N_LAYERS):
+            tensor = sd[f"layers.{i}.feed_forward.w2.weight"]
+            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
 
-        # 10. w3  [n_layers × hidden_dim × dim]
+        # 10. w3
         print("  Writing w3 …")
-        w3 = torch.stack(
-            [sd[f"layers.{i}.feed_forward.w3.weight"] for i in range(N_LAYERS)]
-        )
-        total_bytes += serialize_q4(f, w3, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, w3)
+        for i in range(N_LAYERS):
+            tensor = sd[f"layers.{i}.feed_forward.w3.weight"]
+            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
 
         # 11. rms_final_weight  [dim]
         print("  Writing rms_final_weight …")

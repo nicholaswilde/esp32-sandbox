@@ -1,0 +1,8 @@
+--- /home/nicholas/git/nicholaswilde/esp32-sandbox/projects/s3-tiny-stories/src/main.cpp
++++ /home/nicholas/git/nicholaswilde/esp32-sandbox/projects/s3-tiny-stories/src/main.cpp
+@@ -263,6 +263,8 @@
+     for (int v = 0; v < model.out_vocab; v++)
+       if (s.logits[v] > bv) { bv = s.logits[v]; best = v; }
+     tok = best;
++    Serial.printf("[DEBUG tok=%d bv=%f] ", tok, bv);
+     emit(tok);
