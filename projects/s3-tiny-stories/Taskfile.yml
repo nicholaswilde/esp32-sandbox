@@ -32,9 +32,15 @@ tasks:
   flash-model:
     desc: Flash the pre-built model.bin to the model partition at 0x110000
     cmds:
-      - esptool --baud 921600 --port /dev/ttyACM0 write-flash 0x110000 pc_tools/model.bin
+      - esptool --baud 921600 --port /dev/ttyACM0 write-flash 0x110000 pc_tools/stories15M_q4.bin
 
   generate-vocab:
     desc: Generate src/generated/vocab.h from the tokenizer
     cmds:
       - uv run --no-project --with 'tokenizers==0.23.1' python /home/nicholas/git/slvDev/esp32-ai/firmware/esp32_tinystories/tools/generate_vocab.py --tokenizer pc_tools/tokenizer.json --out src/generated/vocab.h
+
+  quantize:
+    desc: Quantize the downloaded TinyLlamas model to INT4
+    dir: pc_tools
+    cmds:
+      - uv run --with numpy --with torch --with huggingface-hub python export_model.py stories15M_q4.bin

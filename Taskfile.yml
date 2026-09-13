@@ -76,3 +76,9 @@ tasks:
     dir: projects/s3-tiny-stories
     cmds:
       - pio test -e native
+
+  quantize:
+    desc: Quantize the downloaded TinyLlamas model to 4-bit (INT4)
+    dir: projects/s3-tiny-stories/pc_tools
+    cmds:
+      - uv run --with numpy --with torch --with huggingface-hub python export_model.py stories15M_q4.bin

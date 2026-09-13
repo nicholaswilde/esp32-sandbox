@@ -14,11 +14,11 @@
 #include <math.h>
 #include <string.h>
 
-#define LLM_MAGIC 0x00454C50u        /* "PLE\0" */
+#define LLM_MAGIC 0x616B3432u        /* "ak42" */
 #define LLM_FORMAT_VERSION 1u
 #define LLM_FLAG_TIED_HEAD 1u        /* head is the token embedding */
 #define LLM_FLAGS_KNOWN LLM_FLAG_TIED_HEAD
-#define LLM_HEADER_BYTES 56u         /* version 1 */
+#define LLM_HEADER_BYTES 256u
 #define LLM_HEADER_MAX 4096u         /* sanity bound on a future header */
 #define LLM_MAX_LAYERS 32            /* fixed per-layer arrays below */
 #define RMS_EPS 1e-6f
@@ -26,7 +26,8 @@
 
 
 typedef struct {
-  int vocab, dim, n_layers, n_heads, ffn, ple_dim, seq_len, group;
+  int vocab, dim, n_layers, n_heads, n_kv_heads, ffn, seq_len, group;
+  int shared_classifier;
   float rope_theta;
 } Cfg;
 
@@ -64,21 +65,19 @@ static inline float half2float(uint16_t h) {
 
 typedef struct {
   Cfg c;
-  QT tok_emb;             // [V, D]  input embedding
-  QT out_head;            // [Vout, D]; first Vout rows of tok_emb when tied
-  int out_vocab;          // logits produced per step
-  QT ple_model_proj;      // [L*P, D]
-  const float *ple_proj_norm; // [P]
-  QT ple_table;           // [V, L*P]
+  QT tok_emb;             // [V, D]
+  QT out_head;            // [V, D] (classifier)
+  int out_vocab;
   const float *attn_norm[LLM_MAX_LAYERS]; // [D]
-  QT qkv[LLM_MAX_LAYERS];             // [3D, D]
-  QT attn_proj[LLM_MAX_LAYERS];       // [D, D]
+  QT wq[LLM_MAX_LAYERS];  // [D, D]
+  QT wk[LLM_MAX_LAYERS];  // [D, D]
+  QT wv[LLM_MAX_LAYERS];  // [D, D]
+  QT wo[LLM_MAX_LAYERS];  // [D, D]
   const float *ffn_norm[LLM_MAX_LAYERS];  // [D]
-  QT gate[LLM_MAX_LAYERS], up[LLM_MAX_LAYERS], down[LLM_MAX_LAYERS];
-  QT ple_gate[LLM_MAX_LAYERS];        // [P, D]
-  QT ple_proj[LLM_MAX_LAYERS];        // [D, P]
-  const float *ple_norm[LLM_MAX_LAYERS];  // [D]
-  const float *out_norm;      // [D]
+  QT w1[LLM_MAX_LAYERS];  // [F, D]
+  QT w2[LLM_MAX_LAYERS];  // [D, F]
+  QT w3[LLM_MAX_LAYERS];  // [F, D]
+  const float *out_norm;  // [D]
   size_t image_bytes;     // bytes consumed by the image, which is smaller than
                           // the flash partition holding it
 
@@ -278,29 +277,32 @@ static inline float silu(float x) { return x / (1.f + expf(-x)); }
 // Parse header + bind all tensors. Returns 0 on ok, -1 on bad magic.
 static int llm_load(const uint8_t *base, Model *m) {
   const uint8_t *p = base;
-  uint32_t h[4]; memcpy(h, p, 16); p += 16;   /* magic, version, header_bytes, flags */
-  if (h[0] != LLM_MAGIC) return -1;
-  /* Version 0 is not a version. A newer one may have changed tensor order, so
-   * refuse rather than mis-bind. An unknown flag bit means the writer asked for
-   * behaviour this reader does not implement, which is equally unsafe. */
-  if (h[1] == 0 || h[1] > LLM_FORMAT_VERSION) return -3;
-  if (h[2] < LLM_HEADER_BYTES || h[2] > LLM_HEADER_MAX) return -2;
-  if (h[3] & ~(uint32_t)LLM_FLAGS_KNOWN) return -3;
-  uint32_t flags = h[3];
-  uint32_t vio[2]; memcpy(vio, p, 8); p += 8; /* input_vocab, output_vocab */
-  m->c.vocab = (int)vio[0];
-  m->out_vocab = (int)vio[1];
-  int32_t hv[7]; memcpy(hv, p, 28); p += 28;
-  m->c.dim = hv[0]; m->c.n_layers = hv[1]; m->c.n_heads = hv[2];
-  m->c.ffn = hv[3]; m->c.ple_dim = hv[4]; m->c.seq_len = hv[5]; m->c.group = hv[6];
-  memcpy(&m->c.rope_theta, p, 4); p += 4;
-  /* Skip any fields a later version appended. */
-  p = base + h[2];
+  struct {
+    uint32_t magic; int version; int dim; int hidden_dim; int n_layers;
+    int n_heads; int n_kv_heads; int vocab_size; int seq_len;
+    uint8_t shared_classifier; int group_size;
+  } h;
+  memcpy(&h, p, 41);
+  if (h.magic != LLM_MAGIC) return -1;
+  if (h.version != 1) return -3;
+  m->c.vocab = h.vocab_size;
+  m->out_vocab = h.vocab_size;
+  m->c.dim = h.dim;
+  m->c.n_layers = h.n_layers;
+  m->c.n_heads = h.n_heads;
+  m->c.n_kv_heads = h.n_kv_heads;
+  m->c.ffn = h.hidden_dim;
+  m->c.seq_len = h.seq_len;
+  m->c.shared_classifier = h.shared_classifier;
+  m->c.group = h.group_size;
+  m->c.rope_theta = 10000.0f; // Default for llama2
+  uint32_t flags = h.shared_classifier ? LLM_FLAG_TIED_HEAD : 0;
+  p = base + 256;
 
   /* Every dimension below indexes a fixed array or sizes an allocation, so a
    * malformed header must be rejected before any tensor is bound. */
   if (m->c.vocab <= 0 || m->out_vocab <= 0 ||
-      m->c.dim <= 0 || m->c.ffn <= 0 || m->c.ple_dim <= 0 ||
+      m->c.dim <= 0 || m->c.ffn <= 0  ||
       m->c.seq_len <= 0 || m->c.group <= 0 ||
       m->c.n_layers <= 0 || m->c.n_layers > LLM_MAX_LAYERS ||
       m->c.n_heads <= 0 || m->c.dim % m->c.n_heads != 0 ||
@@ -312,31 +314,34 @@ static int llm_load(const uint8_t *base, Model *m) {
 #ifdef LLM_INT8_ACT
   /* quantize_act writes into a fixed LLM_Q8_MAX_INPUT buffer, sized by the
    * widest matvec input: dim, ffn or ple_dim. */
-  if (m->c.dim > LLM_Q8_MAX_INPUT || m->c.ffn > LLM_Q8_MAX_INPUT ||
-      m->c.ple_dim > LLM_Q8_MAX_INPUT)
+  if (m->c.dim > LLM_Q8_MAX_INPUT || m->c.ffn > LLM_Q8_MAX_INPUT )
     return -2;
 #endif
 
   m->head_matvec = NULL;
   m->layer_matvec = NULL;
-  int D = m->c.dim, L = m->c.n_layers, P = m->c.ple_dim, F = m->c.ffn, V = m->c.vocab;
+  int D = m->c.dim, L = m->c.n_layers, F = m->c.ffn, V = m->c.vocab;
+
+  // if unquantized, use bind_f? Wait, llama2.c bin format has group_size > 0 for quant.
+  // The bind_q function requires group_size prepended. 
+  // Let's modify bind_q to NOT read group size from stream if it's already in header,
+  // or export_model.py writes it per tensor. export_model.py wrote it per tensor in our script.
+  
+  // Wait, export_model.py wrote it per tensor!
+  
 
   p = bind_q(p, &m->tok_emb, V, D);
-  p = bind_q(p, &m->ple_model_proj, L * P, D);
-  p = bind_f(p, &m->ple_proj_norm, P);
-  p = bind_q(p, &m->ple_table, V, L * P);
-  for (int i = 0; i < L; i++) {
-    p = bind_f(p, &m->attn_norm[i], D);
-    p = bind_q(p, &m->qkv[i], 3 * D, D);
-    p = bind_q(p, &m->attn_proj[i], D, D);
-    p = bind_f(p, &m->ffn_norm[i], D);
-    p = bind_q(p, &m->gate[i], F, D);
-    p = bind_q(p, &m->up[i], F, D);
-    p = bind_q(p, &m->down[i], D, F);
-    p = bind_q(p, &m->ple_gate[i], P, D);
-    p = bind_q(p, &m->ple_proj[i], D, P);
-    p = bind_f(p, &m->ple_norm[i], D);
-  }
+  
+  for (int i = 0; i < L; i++) p = bind_f(p, &m->attn_norm[i], D);
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->wq[i], D, D);
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->wk[i], D, D); // assume n_kv_heads == n_heads
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->wv[i], D, D);
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->wo[i], D, D);
+  for (int i = 0; i < L; i++) p = bind_f(p, &m->ffn_norm[i], D);
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->w1[i], F, D);
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->w2[i], D, F);
+  for (int i = 0; i < L; i++) p = bind_q(p, &m->w3[i], F, D);
+  
   p = bind_f(p, &m->out_norm, D);
   /* Tied: the head is the FIRST out_vocab rows of the token embedding. The
    * embedding may store more rows than the model can ever emit (padding above
@@ -394,13 +399,11 @@ static inline void llm_stage_int8(QT *t, void *buffer) {
 static inline int llm_stage_core_int8_alloc(Model *m, void *(*alloc)(size_t)) {
   int staged = 0;
   QT *tensors[7];
-  void *buf = alloc(llm_stage_int8_bytes(&m->ple_model_proj));
-  if (buf) { llm_stage_int8(&m->ple_model_proj, buf); ++staged; }
   for (int l = 0; l < m->c.n_layers; l++) {
-    tensors[0] = &m->qkv[l];       tensors[1] = &m->attn_proj[l];
-    tensors[2] = &m->gate[l];      tensors[3] = &m->up[l];
-    tensors[4] = &m->down[l];      tensors[5] = &m->ple_gate[l];
-    tensors[6] = &m->ple_proj[l];
+    tensors[0] = &m->wq[l];        tensors[1] = &m->wk[l];
+    tensors[2] = &m->wv[l];        tensors[3] = &m->wo[l];
+    tensors[4] = &m->w1[l];        tensors[5] = &m->w2[l];
+    tensors[6] = &m->w3[l];
     for (int i = 0; i < 7; i++) {
       void *b = alloc(llm_stage_int8_bytes(tensors[i]));
       if (b) { llm_stage_int8(tensors[i], b); ++staged; }
@@ -411,7 +414,7 @@ static inline int llm_stage_core_int8_alloc(Model *m, void *(*alloc)(size_t)) {
 
 /* Number of tensors llm_stage_core_int8_alloc attempts. */
 static inline int llm_core_stage_count(const Model *m) {
-  return 1 + 7 * m->c.n_layers;
+  return 7 * m->c.n_layers;
 }
 
 // Scratch buffers, caller-allocated (host: malloc; device: PSRAM).
@@ -440,7 +443,7 @@ static void llm_profile_reset(Scratch *s) {
        else MATVEC((t), (x), (y)); } while (0)
 
 static void llm_forward(Model *m, int token, int pos, Scratch *s) {
-  int D = m->c.dim, L = m->c.n_layers, P = m->c.ple_dim, F = m->c.ffn;
+  int D = m->c.dim, L = m->c.n_layers, F = m->c.ffn;
   int H = m->c.n_heads, Dh = D / H, S = m->c.seq_len;
 #ifdef LLM_PROFILE
   uint64_t profile_t0 = (uint64_t)LLM_PROFILE_NOW();
@@ -448,21 +451,8 @@ static void llm_forward(Model *m, int token, int pos, Scratch *s) {
 
   deq_row(&m->tok_emb, token, s->x);           // embedding
 
-  // ---- per-layer input: (RMSNorm(proj(x)/sqrt(D)) + table[tok]*sqrt(P)) / sqrt(2)
-  LLM_LMV(m, &m->ple_model_proj, s->x, s->tmpP); // [L*P]
-  float dscale = 1.f / sqrtf((float)D);
-  for (int i = 0; i < L * P; i++) s->tmpP[i] *= dscale;
-  for (int l = 0; l < L; l++)
-    rmsnorm(s->tmpP + l * P, m->ple_proj_norm, P, s->tmpP + l * P);
-  deq_row(&m->ple_table, token, s->trow);      // [L*P]
-  float sp = sqrtf((float)P), inv2 = 0.70710678f;
-  for (int i = 0; i < L * P; i++)
-    s->ple[i] = (s->tmpP[i] + s->trow[i] * sp) * inv2;
-
-  // RoPE frequencies are identical across every head and layer at a position.
-  // Reuse trow (dead after constructing s->ple) instead of recomputing the same
-  // pow/cos/sin values L*H times.
-  float *rope_c = s->trow, *rope_s = s->trow + Dh / 2;
+  // RoPE frequencies
+  float *rope_c = s->tmpP, *rope_s = s->tmpP + Dh / 2;
   for (int i = 0; i < Dh / 2; i++) {
     float freq = powf(m->c.rope_theta, -2.f * i / Dh);
     rope_c[i] = cosf(pos * freq);
@@ -476,8 +466,11 @@ static void llm_forward(Model *m, int token, int pos, Scratch *s) {
   for (int l = 0; l < L; l++) {
     // ---- attention
     rmsnorm(s->x, m->attn_norm[l], D, s->h);
-    LLM_LMV(m, &m->qkv[l], s->h, s->qkv);        // [3D]
     float *q = s->qkv, *k = s->qkv + D, *v = s->qkv + 2 * D;
+    LLM_LMV(m, &m->wq[l], s->h, q);
+    LLM_LMV(m, &m->wk[l], s->h, k);
+    LLM_LMV(m, &m->wv[l], s->h, v);
+    
     // split-half RoPE at position pos, per head
     for (int hh = 0; hh < H; hh++) {
       float *qh = q + hh * Dh, *kh = k + hh * Dh;
@@ -492,6 +485,7 @@ static void llm_forward(Model *m, int token, int pos, Scratch *s) {
     float *kc = s->kcache + (size_t)l * S * D, *vc = s->vcache + (size_t)l * S * D;
     memcpy(kc + (size_t)pos * D, k, D * sizeof(float));
     memcpy(vc + (size_t)pos * D, v, D * sizeof(float));
+    
     // causal attention over 0..pos
     float scale = 1.f / sqrtf((float)Dh);
     for (int hh = 0; hh < H; hh++) {
@@ -515,7 +509,7 @@ static void llm_forward(Model *m, int token, int pos, Scratch *s) {
       }
       for (int i = 0; i < Dh; i++) ao[i] /= denom;
     }
-    LLM_LMV(m, &m->attn_proj[l], s->att, s->h);
+    LLM_LMV(m, &m->wo[l], s->att, s->h);
     for (int i = 0; i < D; i++) s->x[i] += s->h[i];
 #ifdef LLM_PROFILE
     uint64_t profile_t2 = (uint64_t)LLM_PROFILE_NOW();
@@ -524,25 +518,15 @@ static void llm_forward(Model *m, int token, int pos, Scratch *s) {
 
     // ---- SwiGLU FFN
     rmsnorm(s->x, m->ffn_norm[l], D, s->h);
-    LLM_LMV(m, &m->gate[l], s->h, s->g1);
-    LLM_LMV(m, &m->up[l], s->h, s->g2);
+    LLM_LMV(m, &m->w1[l], s->h, s->g1);
+    LLM_LMV(m, &m->w3[l], s->h, s->g2);
     for (int i = 0; i < F; i++) s->g1[i] = silu(s->g1[i]) * s->g2[i];
-    LLM_LMV(m, &m->down[l], s->g1, s->h);
+    LLM_LMV(m, &m->w2[l], s->g1, s->h);
     for (int i = 0; i < D; i++) s->x[i] += s->h[i];
 #ifdef LLM_PROFILE
     uint64_t profile_t3 = (uint64_t)LLM_PROFILE_NOW();
     s->profile.ffn_us += profile_t3 - profile_t2;
-#endif
-
-    // ---- PLE gate: x += RMSNorm(ple_proj(gelu(ple_gate(x)) * ple_l))
-    LLM_LMV(m, &m->ple_gate[l], s->x, s->g2);    // [P]
-    for (int i = 0; i < P; i++) s->g2[i] = gelu(s->g2[i]) * s->ple[l * P + i];
-    LLM_LMV(m, &m->ple_proj[l], s->g2, s->h);    // [D]
-    rmsnorm(s->h, m->ple_norm[l], D, s->h);
-    for (int i = 0; i < D; i++) s->x[i] += s->h[i];
-#ifdef LLM_PROFILE
-    profile_t1 = (uint64_t)LLM_PROFILE_NOW();
-    s->profile.ple_us += profile_t1 - profile_t3;
+    profile_t1 = profile_t3;
 #endif
   }
 

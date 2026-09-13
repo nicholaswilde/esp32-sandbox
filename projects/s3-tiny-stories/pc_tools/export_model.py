@@ -47,7 +47,7 @@ N_KV_HEADS = 6
 VOCAB_SIZE = 32000
 SEQ_LEN = 256
 SHARED_CLASSIFIER = True
-GROUP_SIZE = 0  # 0 = FP32, no quantization
+GROUP_SIZE = 64  # 64 = INT4
 
 
 def serialize(f, tensor: torch.Tensor) -> int:
@@ -56,6 +56,54 @@ def serialize(f, tensor: torch.Tensor) -> int:
     f.write(data.tobytes())
     return data.nbytes
 
+
+
+
+def quantize_q4(tensor: torch.Tensor, group_size: int):
+    # Flatten all dimensions except the last one
+    cols = tensor.size(-1)
+    tensor = tensor.view(-1, cols)
+    rows = tensor.size(0)
+    n_groups = (cols + group_size - 1) // group_size
+    row_bytes = (cols + 1) // 2
+    
+    # Pad to multiple of group_size
+    pad_len = (n_groups * group_size) - cols
+    if pad_len > 0:
+        tensor = torch.nn.functional.pad(tensor, (0, pad_len))
+        
+    # Reshape to [rows, n_groups, group_size]
+    w = tensor.view(rows, n_groups, group_size).detach().cpu().numpy()
+    
+    # Calculate amax and scales
+    amax = np.max(np.abs(w), axis=2)  # [rows, n_groups]
+    scales = np.where(amax > 1e-8, amax / 7.0, 0.0).astype(np.float16)
+    
+    # Quantize
+    inv_scales = np.where(scales > 0, 1.0 / scales, 0.0)
+    q = np.round(w * inv_scales[:, :, np.newaxis])
+    q = np.clip(q, -8, 7).astype(np.int8)
+    q_packed = q + 8  # 0 to 15
+    
+    # Flatten back to [rows, cols] (handling padding if we want, but we just take cols)
+    q_packed = q_packed.reshape(rows, -1)[:, :cols].astype(np.uint8)
+    
+    # Pack nibbles
+    # Even indices go to lower nibble, odd indices go to upper nibble
+    q_even = q_packed[:, 0::2]
+    q_odd = q_packed[:, 1::2]
+    
+    codes = np.zeros((rows, row_bytes), dtype=np.uint8)
+    codes[:, :q_even.shape[1]] |= (q_even & 0xF)
+    codes[:, :q_odd.shape[1]] |= ((q_odd & 0xF) << 4)
+    
+    return codes, scales
+
+def serialize_q4(f, tensor: torch.Tensor, group_size: int) -> int:
+    codes, scales = quantize_q4(tensor, group_size)
+    f.write(codes.tobytes())
+    f.write(scales.tobytes())
+    return codes.nbytes + scales.nbytes
 
 def write_header(f):
     header = struct.pack(
@@ -136,7 +184,7 @@ def export_model(out_path: str = "stories15M.bin"):
 
         # 1. token_embedding_table  [vocab_size × dim]
         print("  Writing token_embedding_table …")
-        total_bytes += serialize(f, sd["tok_embeddings.weight"])
+        total_bytes += serialize_q4(f, sd["tok_embeddings.weight"], GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, sd["tok_embeddings.weight"])
 
         # 2. rms_att_weight  [n_layers × dim]
         print("  Writing rms_att_weight …")
@@ -150,28 +198,28 @@ def export_model(out_path: str = "stories15M.bin"):
         wq = torch.stack(
             [sd[f"layers.{i}.attention.wq.weight"] for i in range(N_LAYERS)]
         )
-        total_bytes += serialize(f, wq)
+        total_bytes += serialize_q4(f, wq, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, wq)
 
         # 4. wk  [n_layers × dim × dim]
         print("  Writing wk …")
         wk = torch.stack(
             [sd[f"layers.{i}.attention.wk.weight"] for i in range(N_LAYERS)]
         )
-        total_bytes += serialize(f, wk)
+        total_bytes += serialize_q4(f, wk, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, wk)
 
         # 5. wv  [n_layers × dim × dim]
         print("  Writing wv …")
         wv = torch.stack(
             [sd[f"layers.{i}.attention.wv.weight"] for i in range(N_LAYERS)]
         )
-        total_bytes += serialize(f, wv)
+        total_bytes += serialize_q4(f, wv, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, wv)
 
         # 6. wo  [n_layers × dim × dim]
         print("  Writing wo …")
         wo = torch.stack(
             [sd[f"layers.{i}.attention.wo.weight"] for i in range(N_LAYERS)]
         )
-        total_bytes += serialize(f, wo)
+        total_bytes += serialize_q4(f, wo, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, wo)
 
         # 7. rms_ffn_weight  [n_layers × dim]
         print("  Writing rms_ffn_weight …")
@@ -185,21 +233,21 @@ def export_model(out_path: str = "stories15M.bin"):
         w1 = torch.stack(
             [sd[f"layers.{i}.feed_forward.w1.weight"] for i in range(N_LAYERS)]
         )
-        total_bytes += serialize(f, w1)
+        total_bytes += serialize_q4(f, w1, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, w1)
 
         # 9. w2  [n_layers × dim × hidden_dim]
         print("  Writing w2 …")
         w2 = torch.stack(
             [sd[f"layers.{i}.feed_forward.w2.weight"] for i in range(N_LAYERS)]
         )
-        total_bytes += serialize(f, w2)
+        total_bytes += serialize_q4(f, w2, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, w2)
 
         # 10. w3  [n_layers × hidden_dim × dim]
         print("  Writing w3 …")
         w3 = torch.stack(
             [sd[f"layers.{i}.feed_forward.w3.weight"] for i in range(N_LAYERS)]
         )
-        total_bytes += serialize(f, w3)
+        total_bytes += serialize_q4(f, w3, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, w3)
 
         # 11. rms_final_weight  [dim]
         print("  Writing rms_final_weight …")
@@ -208,7 +256,7 @@ def export_model(out_path: str = "stories15M.bin"):
         # 12. wcls  [vocab_size × dim]  — only if classifier not shared with embeddings
         if not SHARED_CLASSIFIER:
             print("  Writing wcls …")
-            total_bytes += serialize(f, sd["output.weight"])
+            total_bytes += serialize_q4(f, sd["output.weight"], GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, sd["output.weight"])
 
     file_size = os.path.getsize(out_path)
     print(f"\nExport complete!")

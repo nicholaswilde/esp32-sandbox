@@ -87,15 +87,13 @@ static void matvec_par(const QT *t, const float *x, float *y) {
 // Copy RMSNorm weights from mapped flash to internal SRAM.
 static void copy_norms_to_sram() {
   Cfg *c = &model.c;
-  int D = c->dim, L = c->n_layers, P = c->ple_dim;
+  int D = c->dim, L = c->n_layers;
   const float **vecs[3 * 32 + 2];
   int sizes[3 * 32 + 2], n_vec = 0;
-  vecs[n_vec] = &model.ple_proj_norm; sizes[n_vec++] = P;
-  for (int l = 0; l < L; l++) {
+    for (int l = 0; l < L; l++) {
     vecs[n_vec] = &model.attn_norm[l]; sizes[n_vec++] = D;
     vecs[n_vec] = &model.ffn_norm[l];  sizes[n_vec++] = D;
-    vecs[n_vec] = &model.ple_norm[l];  sizes[n_vec++] = D;
-  }
+      }
   vecs[n_vec] = &model.out_norm; sizes[n_vec++] = D;
   for (int i = 0; i < n_vec; i++) {
     size_t bytes = (size_t)sizes[i] * sizeof(float);
@@ -108,18 +106,16 @@ static void copy_norms_to_sram() {
 
 static void alloc_scratch() {
   Cfg *c = &model.c;
-  int D = c->dim, L = c->n_layers, P = c->ple_dim, F = c->ffn, S = c->seq_len;
+  int D = c->dim, L = c->n_layers, F = c->ffn, S = c->seq_len;
   // hot working set -> internal SRAM
   s.x     = (float *)sram_or_die(D * 4, "x");
   s.h     = (float *)sram_or_die((F > D ? F : D) * 4, "h");
   s.qkv   = (float *)sram_or_die(3 * D * 4, "qkv");
   s.att   = (float *)sram_or_die(D * 4, "att");
   s.g1    = (float *)sram_or_die(F * 4, "g1");
-  s.g2    = (float *)sram_or_die((P > F ? P : F) * 4, "g2");
-  s.ple   = (float *)sram_or_die(L * P * 4, "ple");
-  s.tmpP  = (float *)sram_or_die(L * P * 4, "tmpP");
-  s.trow  = (float *)sram_or_die(L * P * 4, "trow");
-  s.scores = (float *)sram_or_die(S * 4, "scores");
+  s.g2    = (float *)sram_or_die(F * 4, "g2");
+    s.tmpP  = (float *)sram_or_die(D * 4, "tmpP");
+    s.scores = (float *)sram_or_die(S * 4, "scores");
   // logits: out_vocab floats (~99 KiB), read once per token -> PSRAM
   s.logits = (float *)ps_or_die((size_t)model.out_vocab * 4, "logits");
   // KV cache: ~1.1 MB, read once per position -> PSRAM
@@ -163,7 +159,7 @@ void setup() {
   Cfg *c = &model.c;
   Serial.printf("model: Vin=%d Vout=%d D=%d L=%d H=%d F=%d P=%d  (mapped %.1f MB)\n",
                 c->vocab, model.out_vocab, c->dim, c->n_layers, c->n_heads,
-                c->ffn, c->ple_dim, part->size / 1e6);
+                c->ffn, 0, part->size / 1e6);
 
   // Sanity-check vocab table vs model header.
   if (VOCAB_N != model.out_vocab) {
