@@ -317,11 +317,11 @@ void setup() {
     llm_forward(&model, tok, pos++, &s);
   }
 
-  Serial.println("\n[DEBUG] Priming finished"); llm_profile_reset(&s);
+  Serial.println(""); llm_profile_reset(&s);
 
   ProbIndex* probindex = (ProbIndex*)ps_or_die(model.out_vocab * sizeof(ProbIndex), "probindex");
 
-  Serial.printf("\n[DEBUG] seq_len=%d pos=%d N_GENERATE=%d\n", model.c.seq_len, pos, N_GENERATE); int64_t t_start = esp_timer_get_time();
+  int64_t t_start = esp_timer_get_time();
   for (int step = 0; step < N_GENERATE && pos < model.c.seq_len; step++) {
     float temperature = 0.9f;
     float top_p = 0.9f;
