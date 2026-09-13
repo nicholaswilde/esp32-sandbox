@@ -25,7 +25,7 @@
 #define LLM_Q8_MAX_INPUT 4096
 
 
-typedef struct {
+typedef struct __attribute__((packed)) {
   int vocab, dim, n_layers, n_heads, n_kv_heads, ffn, seq_len, group;
   int shared_classifier;
   float rope_theta;
@@ -33,7 +33,7 @@ typedef struct {
 
 // A group-wise int4 tensor viewed in place: ragged packed nibbles (row-aligned
 // to a byte) + fp16 group scales. Per-tensor group. No padding.
-typedef struct {
+typedef struct __attribute__((packed)) {
   const uint8_t  *codes;   // rows*row_bytes, nibble = value+8, row_bytes=ceil(cols/2)
   const uint16_t *scales;  // rows*n_groups fp16
   int rows, cols, group, n_groups, row_bytes;
@@ -63,7 +63,7 @@ static inline float half2float(uint16_t h) {
   float out; memcpy(&out, &f, 4); return out;
 }
 
-typedef struct {
+typedef struct __attribute__((packed)) {
   Cfg c;
   QT tok_emb;             // [V, D]
   QT out_head;            // [V, D] (classifier)
@@ -277,7 +277,7 @@ static inline float silu(float x) { return x / (1.f + expf(-x)); }
 // Parse header + bind all tensors. Returns 0 on ok, -1 on bad magic.
 static int llm_load(const uint8_t *base, Model *m) {
   const uint8_t *p = base;
-  struct {
+  struct __attribute__((packed)) {
     uint32_t magic; int version; int dim; int hidden_dim; int n_layers;
     int n_heads; int n_kv_heads; int vocab_size; int seq_len;
     uint8_t shared_classifier; int group_size;
@@ -418,12 +418,12 @@ static inline int llm_core_stage_count(const Model *m) {
 }
 
 // Scratch buffers, caller-allocated (host: malloc; device: PSRAM).
-typedef struct {
+typedef struct __attribute__((packed)) {
   float *x, *h, *qkv, *att, *g1, *g2, *ple, *tmpP, *trow, *logits;
   float *scores; // [seq_len], reused by each attention head
   float *kcache, *vcache; // [L * seq_len * D]
 #ifdef LLM_PROFILE
-  struct {
+  struct __attribute__((packed)) {
     uint64_t input_us, attn_us, ffn_us, ple_us, head_us;
     uint32_t calls;
   } profile;

@@ -152,7 +152,11 @@ void setup() {
                                      SPI_FLASH_MMAP_DATA, &base, &h);
   if (err != ESP_OK) { Serial.printf("mmap failed: %d\n", err); return; }
 
-  if (llm_load((const uint8_t *)base, &model)) {
+  int llm_err = llm_load((const uint8_t *)base, &model);
+  if (llm_err) {
+    uint32_t m;
+    memcpy(&m, base, 4);
+    Serial.printf("bad model magic, err %d, read %x\n", llm_err, m);
     Serial.println("bad model magic");
     return;
   }
@@ -177,13 +181,14 @@ void setup() {
   // Stage every per-position tensor to int8 in PSRAM.
   int want = llm_core_stage_count(&model);
   int staged = llm_stage_core_int8_alloc(&model, ps);
-  if (staged != want) {
+  if (model.c.group == 0 && staged != want) {
     Serial.printf("FATAL: staged %d/%d core tensors\n", staged, want);
     while (1) delay(1000);
   }
   // Stage the tied output head too (85% of dense MACs).
   {
-    void *b = ps_or_die(llm_stage_int8_bytes(&model.out_head), "staged head");
+    void *b = heap_caps_malloc(llm_stage_int8_bytes(&model.out_head), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (b) 
     llm_stage_int8(&model.out_head, b);
     ++staged;
   }
