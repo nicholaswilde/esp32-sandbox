@@ -1,12 +1,12 @@
-"""Train one ablation arm and report val loss at matched core-parameter budget."""
-
 import argparse
 import hashlib
 import json
 import math
 import os
 import signal
+import sys
 import time
+import tracemalloc
 
 if hasattr(signal, "SIGPIPE"):
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -37,30 +37,44 @@ def get_device():
 
 
 class Batcher:
+    """Generator-based batch provider that streams micro-batches from memmapped data.
+    Avoids holding large batch lists or giant tensors in memory."""
     def __init__(self, split, batch_size, seq_len, device, dataset, seed=0):
-        # The bins are uint16. Reading a wider vocabulary through that dtype
-        # yields plausible token ids rather than an error, so check before
-        # opening.
         self.data = np.memmap(dataset / f"{split}.bin", dtype=np.uint16, mode="r")
         self.bs, self.sl, self.device = batch_size, seq_len, device
-        # Batch order is part of the run. Without the seed here, torch.manual_seed
-        # fixes initialisation only and two runs at the same --seed still see
-        # different data order. Validation keeps a fixed stream so every arm is
-        # scored on identical batches.
         self.rng = np.random.default_rng(1234 if split == "val" else seed)
 
+    def stream(self):
+        """Infinite generator yielding (x, y) micro-batches on demand."""
+        max_idx = len(self.data) - self.sl - 1
+        while True:
+            ix = self.rng.integers(0, max_idx, self.bs)
+            # Allocate contiguous 2D array directly to minimize fragmentation
+            x_arr = np.empty((self.bs, self.sl), dtype=np.int64)
+            y_arr = np.empty((self.bs, self.sl), dtype=np.int64)
+            for row_idx, i in enumerate(ix):
+                x_arr[row_idx] = self.data[i : i + self.sl]
+                y_arr[row_idx] = self.data[i + 1 : i + 1 + self.sl]
+            yield (
+                torch.from_numpy(x_arr).to(self.device, non_blocking=True),
+                torch.from_numpy(y_arr).to(self.device, non_blocking=True),
+            )
+
     def __call__(self):
-        ix = self.rng.integers(0, len(self.data) - self.sl - 1, self.bs)
-        x = np.stack([self.data[i : i + self.sl] for i in ix]).astype(np.int64)
-        y = np.stack([self.data[i + 1 : i + 1 + self.sl] for i in ix]).astype(np.int64)
-        return torch.from_numpy(x).to(self.device), torch.from_numpy(y).to(self.device)
+        return next(self.stream())
 
 
 @torch.no_grad()
 def evaluate(model, batcher, iters):
     model.eval()
     batcher.rng = np.random.default_rng(1234)  # same val batches for every arm
-    losses = [model(*batcher())[1].item() for _ in range(iters)]
+    losses = []
+    gen = batcher.stream()
+    for _ in range(iters):
+        x, y = next(gen)
+        _, loss = model(x, y)
+        losses.append(loss.item())
+        del x, y, _
     model.train()
     return sum(losses) / len(losses)
 
@@ -82,6 +96,8 @@ def main():
     ap.add_argument("--target-core", type=int, default=1_500_000)
     ap.add_argument("--steps", type=int, default=4000)
     ap.add_argument("--batch-size", type=int, default=32)
+    ap.add_argument("--micro-batch-size", type=int, default=4,
+                    help="chunk size processed per forward/backward pass (keeps peak RAM low)")
     ap.add_argument("--seq-len", type=int, default=512)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--warmup", type=int, default=200)
@@ -97,7 +113,13 @@ def main():
     ap.add_argument("--vocab", type=int, default=32768)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--tag", default="")
+    ap.add_argument("--profile-memory", action="store_true",
+                    help="enable tracemalloc memory profiling and leak detection")
     args = ap.parse_args()
+
+    if args.profile_memory:
+        tracemalloc.start()
+        print("[mem-profile] tracemalloc profiling enabled.")
 
     # Before anything expensive: the tokenizer that produced these bins. Its
     # hash is what lets the exporter and sampler refuse a mismatched tokenizer
@@ -136,32 +158,52 @@ def main():
         betas=(0.9, 0.95),
     )
 
-    train_b = Batcher("train", args.batch_size, args.seq_len, device, dataset,
-                      seed=args.seed)
-    val_b = Batcher("val", args.batch_size, args.seq_len, device, dataset)
+    # Micro-batch chunking & gradient accumulation:
+    # Keeps total effective batch size identical while slashing peak RAM by (batch_size / micro_batch_size)
+    micro_bs = min(args.micro_batch_size, args.batch_size)
+    accum_steps = max(1, args.batch_size // micro_bs)
+
+    train_b = Batcher("train", micro_bs, args.seq_len, device, dataset, seed=args.seed)
+    val_b = Batcher("val", micro_bs, args.seq_len, device, dataset)
+    train_stream = train_b.stream()
 
     name = f"{args.arm}{'-' + args.tag if args.tag else ''}-s{args.seed}"
     history, best = [], float("inf")
     t0 = time.time()
 
+    print(f"[{args.arm}] batch_size={args.batch_size} (micro_batch={micro_bs}, accum={accum_steps})")
+
     for step in range(args.steps):
         lr = lr_at(step, args.steps, args.lr, args.warmup)
         for g in opt.param_groups:
             g["lr"] = lr
-        x, y = train_b()
-        _, loss = model(x, y)
+
         opt.zero_grad(set_to_none=True)
-        loss.backward()
+        step_loss = 0.0
+
+        # Generator-based chunk processing
+        for _ in range(accum_steps):
+            x, y = next(train_stream)
+            _, loss = model(x, y)
+            loss_scaled = loss / accum_steps
+            loss_scaled.backward()
+            step_loss += loss.item() / accum_steps
+            del x, y, _, loss, loss_scaled
+
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         opt.step()
+
+        if args.profile_memory and (step == 0 or (step + 1) % 50 == 0):
+            current, peak = tracemalloc.get_traced_memory()
+            print(f"[mem-profile] step {step:4d} | current: {current / 1024**2:6.1f} MB | peak: {peak / 1024**2:6.1f} MB", flush=True)
 
         if step % args.eval_every == 0 or step == args.steps - 1:
             vl = evaluate(model, val_b, args.eval_iters)
             best = min(best, vl)
             tok = (step + 1) * args.batch_size * args.seq_len
-            history.append({"step": step, "tokens": tok, "train": loss.item(), "val": vl})
+            history.append({"step": step, "tokens": tok, "train": step_loss, "val": vl})
             print(
-                f"{name} step {step:5d} | tok {tok / 1e6:6.1f}M | train {loss.item():.4f} "
+                f"{name} step {step:5d} | tok {tok / 1e6:6.1f}M | train {step_loss:.4f} "
                 f"| val {vl:.4f} | ppl {math.exp(vl):7.2f} | {time.time() - t0:5.0f}s",
                 flush=True,
             )

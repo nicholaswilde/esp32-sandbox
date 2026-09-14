@@ -53,12 +53,12 @@ tasks:
   train-test:
     desc: Train a quick 1.5M parameter TinyLM model (500 steps) for testing
     cmds:
-      - uv run python -m research.tinystories.train --arm baseline --vocab 32768 --target-core 1500000 --steps 500 --seed 0
+      - uv run python -m research.tinystories.train --arm baseline --vocab 32768 --target-core 1500000 --steps 500 --seed 0 --micro-batch-size 4 --profile-memory
 
   train-full:
     desc: Train a full 15M parameter TinyLM model (5000 steps)
     cmds:
-      - uv run python -m research.tinystories.train --arm baseline --vocab 32768 --target-core 15000000 --steps 5000 --seed 0
+      - uv run python -m research.tinystories.train --arm baseline --vocab 32768 --target-core 15000000 --steps 5000 --seed 0 --micro-batch-size 4 --profile-memory
 
   export-test:
     desc: Export the quick 1.5M test model to binary format

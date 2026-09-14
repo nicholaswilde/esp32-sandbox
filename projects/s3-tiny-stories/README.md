@@ -87,6 +87,27 @@ task prepare
   ```
 Checkpoints will be saved to `runs/` as `.pt` files.
 
+### Memory Optimization & Host Protection
+Training models with large vocabularies (e.g. 32k) requires substantial memory for intermediate activation tensors during forward/backward passes.
+
+* **Micro-Batching & Gradient Accumulation**:
+  `train.py` defaults to `--micro-batch-size 4` with automatic gradient accumulation to match the full `--batch-size 32`. This keeps peak memory under ~1.5GB RAM on constrained machines.
+* **Memory Profiling**:
+  Pass `--profile-memory` to print `tracemalloc` memory reports at step 0 and every 50 steps.
+* **Adding Swap on Linux**:
+  ```bash
+  sudo fallocate -l 4G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
+  sudo chmod 600 /swapfile
+  sudo mkswap /swapfile
+  sudo swapon /swapfile
+  ```
+  *(Note: On Btrfs filesystems, run `sudo chattr +C /swapfile` before zeroing with `dd`).*
+* **Cgroup / Systemd Protection (`systemd-run`)**:
+  To protect the host OS from hard freezes or OOM panics if memory spikes, wrap training with a cgroup `MemoryMax` limit:
+  ```bash
+  systemd-run --user --scope -p MemoryMax=4G -p MemoryHigh=3.5G task train-full
+  ```
+
 ### 4. Export to Binary
 Export the trained PyTorch checkpoint into the packed binary format for the ESP32 partition:
 ```bash
