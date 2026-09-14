@@ -10,6 +10,6 @@ ser.setRTS(False)
 
 start_time = time.time()
 while time.time() - start_time < 15:
-    line = ser.readline()
-    if line:
-        print(line.decode('utf-8', errors='replace'), end='')
+    char = ser.read(1)
+    if char:
+        print(char.decode('utf-8', errors='replace'), end='', flush=True)

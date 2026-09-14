@@ -244,6 +244,17 @@ def export_model(out_path: str = "stories15M.bin"):
         print("  Writing rms_final_weight …")
         total_bytes += serialize(f, sd["norm.weight"])
 
+        # --- HIERARCHICAL SOFTMAX MOCK (Issue #4) ---
+        # Inject a mock cluster_head into the state dict for testing!
+        sd["cluster_head.weight"] = torch.zeros(32, 288)
+        sd["cluster_head.weight"][0, :] = 1.0  # Force it to always pick Cluster 0 (most common words)
+        
+        if "cluster_head.weight" in sd:
+            print("  Writing cluster_head …")
+            tensor = sd["cluster_head.weight"]
+            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
+        # --------------------------------------------
+
         # 12. wcls  [vocab_size × dim]  — only if classifier not shared with embeddings
         if not SHARED_CLASSIFIER:
             print("  Writing wcls …")
