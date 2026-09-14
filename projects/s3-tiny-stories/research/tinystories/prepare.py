@@ -104,6 +104,12 @@ def main():
     out = variant_dir(VOCAB_SIZE)
     out.mkdir(parents=True, exist_ok=True)
 
+    train_bin = out / "train.bin"
+    val_bin = out / "val.bin"
+    if train_bin.exists() and val_bin.exists() and train_bin.stat().st_size > 0:
+        print(f"already have {train_bin} and {val_bin}")
+        return 0
+
     download()
     with open(RAW, "r", encoding="utf-8", errors="ignore") as f:
         text = f.read()
@@ -122,16 +128,29 @@ def main():
         for enc in tok.encode_batch(batch):
             ids.extend(enc.ids)
             ids.append(eot)
-        print(f"  {i + len(batch)}/{len(docs)} docs, {len(ids) / 1e6:.1f}M tokens", flush=True)
+        try:
+            print(f"  {i + len(batch)}/{len(docs)} docs, {len(ids) / 1e6:.1f}M tokens", flush=True)
+        except BrokenPipeError:
+            pass
 
     arr = np.array(ids, dtype=np.uint16)
     assert arr.max() < VOCAB_SIZE
     n_val = int(len(arr) * VAL_FRACTION)
-    arr[:-n_val].tofile(out / "train.bin")
-    arr[-n_val:].tofile(out / "val.bin")
-    print(f"train {len(arr) - n_val:,} tokens / val {n_val:,} tokens")
-    print(f"compression: {len(text) / len(arr):.2f} bytes/token")
+    arr[:-n_val].tofile(train_bin)
+    arr[-n_val:].tofile(val_bin)
+    try:
+        print(f"train {len(arr) - n_val:,} tokens / val {n_val:,} tokens")
+        print(f"compression: {len(text) / len(arr):.2f} bytes/token")
+    except BrokenPipeError:
+        pass
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except BrokenPipeError:
+        # Python flushes standard streams on exit; redirect remaining output
+        # to devnull to avoid BrokenPipeError when piped to head/cat/pager.
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(0)
