@@ -60,6 +60,40 @@ task monitor
 
 > **Tip:** If the monitor connects after the board finishes its boot priming sequence, press the physical **RST** button on the ESP32-S3 board to restart generation from the beginning.
 
+## :brain: Training a Custom Model
+
+You can train custom models with Hierarchical Softmax (cluster prediction head) directly in the `research/` pipeline and export them for on-device inference.
+
+### 1. Environment & Dependencies
+Ensure Python dependencies are synced via `uv`:
+```bash
+uv sync
+```
+
+### 2. Prepare Training Data & Tokenizer
+Downloads the TinyStories dataset slice (first 300MB) and builds the 32k vocabulary tokenizer:
+```bash
+task prepare
+```
+
+### 3. Run Training
+* **Quick Verification Run (1.5M params, 500 steps)**:
+  ```bash
+  task train-test
+  ```
+* **Full Training Run (15M params, 5000 steps)**:
+  ```bash
+  task train-full
+  ```
+Checkpoints will be saved to `runs/` as `.pt` files.
+
+### 4. Export to Binary
+Export the trained PyTorch checkpoint into the packed binary format for the ESP32 partition:
+```bash
+task export-test
+```
+*(Or invoke `research.tinystories.export` directly for custom checkpoint tags).* Once exported, flash the binary using `task flash-model`.
+
 ## :wrench: Troubleshooting
 
 *   **Serial Port Busy (`[Errno 11] Resource temporarily unavailable`)**:
