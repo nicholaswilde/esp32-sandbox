@@ -10,7 +10,12 @@ comparable between models that share a tokenizer.
 
 import argparse
 import os
+import signal
 import sys
+
+# Restore default SIGPIPE behavior so pipelines (e.g. | mailrise, | head) don't trigger BrokenPipeError on exit
+if hasattr(signal, "SIGPIPE"):
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 import numpy as np
 import requests
@@ -147,10 +152,10 @@ def main():
 
 if __name__ == "__main__":
     try:
-        sys.exit(main())
+        rc = main()
+        sys.stdout.flush()
+        sys.exit(rc if rc is not None else 0)
     except BrokenPipeError:
-        # Python flushes standard streams on exit; redirect remaining output
-        # to devnull to avoid BrokenPipeError when piped to head/cat/pager.
         devnull = os.open(os.devnull, os.O_WRONLY)
         os.dup2(devnull, sys.stdout.fileno())
         sys.exit(0)

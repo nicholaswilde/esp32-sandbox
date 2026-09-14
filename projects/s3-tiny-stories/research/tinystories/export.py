@@ -24,7 +24,11 @@ import argparse
 import hashlib
 import os
 import shutil
+import signal
 import struct
+
+if hasattr(signal, "SIGPIPE"):
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 import numpy as np
 import torch

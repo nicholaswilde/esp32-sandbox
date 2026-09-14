@@ -5,7 +5,11 @@ import hashlib
 import json
 import math
 import os
+import signal
 import time
+
+if hasattr(signal, "SIGPIPE"):
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 import numpy as np
 import torch
