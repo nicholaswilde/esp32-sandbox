@@ -359,9 +359,12 @@ def make_model(arm, target_core, base: Config = None, verbose=True, fixed_ffn=No
         model = TinyLM(cfg)
         if verbose:
             b = model.param_budget()
-            print(f"[{arm}] d_model={cfg.d_model} layers={cfg.n_layers} "
-                  f"ffn={cfg.ffn_hidden} ple_dim={cfg.ple_dim} core={b['core']:,} "
-                  f"stream={b['stream']:,} table={b['table']:,} total={b['total']:,}")
+            try:
+                print(f"[{arm}] d_model={cfg.d_model} layers={cfg.n_layers} "
+                      f"ffn={cfg.ffn_hidden} ple_dim={cfg.ple_dim} core={b['core']:,} "
+                      f"stream={b['stream']:,} table={b['table']:,} total={b['total']:,}")
+            except BrokenPipeError:
+                pass
         return model
     table_budget = cfg.vocab_size * cfg.n_layers * cfg.ple_dim
     if arm == "bigcore":
@@ -389,9 +392,12 @@ def make_model(arm, target_core, base: Config = None, verbose=True, fixed_ffn=No
     model = TinyLM(cfg)
     if verbose:
         b = model.param_budget()
-        print(
-            f"[{arm}] d_model={cfg.d_model} layers={cfg.n_layers} ffn={cfg.ffn_hidden} "
-            f"core={b['core']:,} stream={b['stream']:,} table={b['table']:,} "
-            f"total={b['total']:,}"
-        )
+        try:
+            print(
+                f"[{arm}] d_model={cfg.d_model} layers={cfg.n_layers} ffn={cfg.ffn_hidden} "
+                f"core={b['core']:,} stream={b['stream']:,} table={b['table']:,} "
+                f"total={b['total']:,}"
+            )
+        except BrokenPipeError:
+            pass
     return model

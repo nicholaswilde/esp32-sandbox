@@ -9,7 +9,14 @@ import time
 import tracemalloc
 
 if hasattr(signal, "SIGPIPE"):
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+
+
+def safe_print(*a, **kw):
+    try:
+        print(*a, **kw)
+    except BrokenPipeError:
+        pass
 
 import numpy as np
 import torch
@@ -119,7 +126,7 @@ def main():
 
     if args.profile_memory:
         tracemalloc.start()
-        print("[mem-profile] tracemalloc profiling enabled.")
+        safe_print("[mem-profile] tracemalloc profiling enabled.")
 
     # Before anything expensive: the tokenizer that produced these bins. Its
     # hash is what lets the exporter and sampler refuse a mismatched tokenizer
@@ -171,7 +178,7 @@ def main():
     history, best = [], float("inf")
     t0 = time.time()
 
-    print(f"[{args.arm}] batch_size={args.batch_size} (micro_batch={micro_bs}, accum={accum_steps})")
+    safe_print(f"[{args.arm}] batch_size={args.batch_size} (micro_batch={micro_bs}, accum={accum_steps})")
 
     for step in range(args.steps):
         lr = lr_at(step, args.steps, args.lr, args.warmup)
@@ -195,14 +202,14 @@ def main():
 
         if args.profile_memory and (step == 0 or (step + 1) % 50 == 0):
             current, peak = tracemalloc.get_traced_memory()
-            print(f"[mem-profile] step {step:4d} | current: {current / 1024**2:6.1f} MB | peak: {peak / 1024**2:6.1f} MB", flush=True)
+            safe_print(f"[mem-profile] step {step:4d} | current: {current / 1024**2:6.1f} MB | peak: {peak / 1024**2:6.1f} MB", flush=True)
 
         if step % args.eval_every == 0 or step == args.steps - 1:
             vl = evaluate(model, val_b, args.eval_iters)
             best = min(best, vl)
             tok = (step + 1) * args.batch_size * args.seq_len
             history.append({"step": step, "tokens": tok, "train": step_loss, "val": vl})
-            print(
+            safe_print(
                 f"{name} step {step:5d} | tok {tok / 1e6:6.1f}M | train {step_loss:.4f} "
                 f"| val {vl:.4f} | ppl {math.exp(vl):7.2f} | {time.time() - t0:5.0f}s",
                 flush=True,
@@ -243,10 +250,19 @@ def main():
                 "tokenizer_sha256": tok_sha,
                 "seed": args.seed, "tag": args.tag, "name": name,
                 "training": result["training"]},
-               os.path.join(RUNS, f"{name}.pt"))
-    print(f"{name} DONE core={budget['core']:,} table={budget['table']:,} "
-          f"val={result['final_val']:.4f} ppl={result['final_ppl']:.2f}")
+                os.path.join(RUNS, f"{name}.pt"))
+    safe_print(f"{name} DONE core={budget['core']:,} table={budget['table']:,} "
+               f"val={result['final_val']:.4f} ppl={result['final_ppl']:.2f}")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+        try:
+            sys.stdout.flush()
+        except BrokenPipeError:
+            pass
+    except BrokenPipeError:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(0)
