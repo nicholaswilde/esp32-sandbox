@@ -18,6 +18,8 @@ Ensure you have the following tools installed on your host machine:
 *   [go-task](https://taskfile.dev/)
 *   [uv](https://github.com/astral-sh/uv) (for Python dependency management)
 *   [esptool.py](https://docs.espressif.com/projects/esptool/en/latest/esp32/)
+*   [google-colab-cli](https://github.com/googlecolab/colab-cli) (`colab`) - optional, for running builds and training on Google Colab Free Tier
+
 
 ## :gear: Setup Workflow
 
@@ -32,6 +34,62 @@ task quantize
 ```
 
 *(Alternatively, pre-exported weights can be downloaded with `task fetch-model`)*.
+
+### :cloud: Google Colab Free Tier (Accelerated GPU Build & Training)
+
+You can offload INT4 quantization or custom model training to Google Colab using the **Free Tier** (T4 GPU or CPU), avoiding local CPU/RAM bottlenecks and getting 10x+ training speedups:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/nicholaswilde/esp32-sandbox/blob/main/projects/s3-tiny-stories/s3_tiny_stories_colab.ipynb)
+
+#### Option A: Standalone Colab Notebook
+Open [`s3_tiny_stories_colab.ipynb`](file:///home/nicholas/git/nicholaswilde/esp32-sandbox/projects/s3-tiny-stories/s3_tiny_stories_colab.ipynb) directly in Google Colab:
+1. **Set Hardware Accelerator**: Select **Runtime** > **Change runtime type** > **T4 GPU** (Free Tier).
+2. **Execute Steps**:
+   - **Track 1 (Quantize)**: Downloads `karpathy/tinyllamas` `stories15M.pt` and quantizes it to 4-bit INT4 (`stories15M_q4.bin`, ~8.1MB).
+   - **Track 2 (Train Custom)**: Downloads the TinyStories dataset slice, trains the 32k BPE tokenizer, trains a custom TinyLM model on CUDA, and exports to the packed INT4 binary format.
+   - **Test Generation**: Interactively sample text from the model directly within the notebook.
+3. **Download**: Run the download cell to save the `.bin` model file locally. Move it to `projects/s3-tiny-stories/pc_tools/` and flash with `task flash-model`.
+
+#### Option B: Automated CLI Workflow (`colab-cli`)
+If you have the `colab` CLI installed (`uv tool install google-colab-cli`), you can drive the entire Colab provisioning, build, download, and cleanup process from your terminal:
+
+1. **One-Time Authentication**:
+   Verify CLI authentication (launches browser authorization if first time):
+   ```bash
+   task colab-check
+   # or interactive login: colab sessions
+   ```
+   *(For Application Default Credentials, use: `gcloud auth application-default login --scopes=openid,https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/colaboratory`)*.
+
+2. **Build / Quantize Pre-trained Model**:
+   ```bash
+   task colab-quantize
+   ```
+   *Automatically provisions a free-tier Colab session (T4 GPU or CPU fallback), quantizes the 15M model, downloads `stories15M_q4.bin` to `pc_tools/`, and stops the VM session.*
+
+3. **Train Custom TinyLM Model on Free T4 GPU**:
+   ```bash
+   # Quick test run (1.5M params, 500 steps, ~1-2 min on T4 GPU)
+   task colab-train-test
+
+   # Full run (15M params, 5000 steps, ~15-20 min on T4 GPU)
+   task colab-train-full
+   ```
+   *Downloads the exported `.bin` model artifact directly into `artifacts/tinystories/`.*
+
+4. **Stop Session**:
+   ```bash
+   task colab-stop
+   ```
+   *(Sessions are automatically stopped by default after builds to conserve free-tier quotas).*
+
+5. **Flash Model to ESP32-S3**:
+   Once downloaded, flash the model directly to the Flash partition (`0x110000`):
+   ```bash
+   task flash-model
+   ```
+
+
 
 ### :zap: 2. Flash the Model Partition
 
@@ -87,6 +145,9 @@ task prepare
   ```
 Checkpoints will be saved to `runs/` as `.pt` files.
 
+> **Tip (Recommended):** Instead of running heavy training on your local CPU machine, you can run training on a free-tier Google Colab T4 GPU via `task colab-train-test` or `task colab-train-full`, or interactively in [`s3_tiny_stories_colab.ipynb`](file:///home/nicholas/git/nicholaswilde/esp32-sandbox/projects/s3-tiny-stories/s3_tiny_stories_colab.ipynb).
+
+
 ### Memory Optimization & Host Protection
 Training models with large vocabularies (e.g. 32k) requires substantial memory for intermediate activation tensors during forward/backward passes.
 
@@ -130,6 +191,13 @@ task export-test
     ```
 *   **PSRAM Allocation Failures**:
     Ensure `platformio.ini` has `board_build.arduino.memory_type = qio_opi` and `-D BOARD_HAS_PSRAM` enabled. The board must have functional Octal PSRAM.
+*   **Colab CLI Execution Error (`AttributeError: module 'jupyter_kernel_client' has no attribute 'KernelClient'`)**:
+    If `colab exec` or `task colab-...` fails with this error due to unpinned `jupyter-kernel-client` versions, apply the automated patch:
+    ```bash
+    task colab-patch
+    ```
+    *(Refer to [`docs/colab_cli_patch.md`](file:///home/nicholas/git/nicholaswilde/esp32-sandbox/docs/colab_cli_patch.md) for full root cause and manual patch instructions).*
+
 
 ## :link: References
 

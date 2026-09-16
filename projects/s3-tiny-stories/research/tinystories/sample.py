@@ -14,7 +14,10 @@ from pathlib import Path
 import torch
 from tokenizers import Tokenizer
 
-from model import Config, TinyLM
+try:
+    from research.model import Config, TinyLM
+except ImportError:
+    from model import Config, TinyLM
 
 from .train import get_device
 

@@ -64,3 +64,35 @@ tasks:
     desc: Export the quick 1.5M test model to binary format
     cmds:
       - uv run python -m research.tinystories.export --tokenizer data/tinystories/vocab-32768/tokenizer.json baseline_v32768_c1500000_s0
+
+  colab-check:
+    desc: Check Google Colab CLI authentication status
+    cmds:
+      - uv run python colab_runner.py check-auth
+
+  colab-quantize:
+    desc: Quantize TinyStories 15M model on Google Colab Free Tier and download binary
+    cmds:
+      - uv run python colab_runner.py build --action quantize
+
+  colab-train-test:
+    desc: Train 1.5M TinyLM test model on Google Colab Free Tier T4 GPU and download binary
+    cmds:
+      - uv run python colab_runner.py build --action train-test
+
+  colab-train-full:
+    desc: Train full 15M TinyLM model on Google Colab Free Tier T4 GPU and download binary
+    cmds:
+      - uv run python colab_runner.py build --action train-full
+
+  colab-stop:
+    desc: Stop active Google Colab session to release free tier resources
+    cmds:
+      - uv run python colab_runner.py stop-session
+
+  colab-patch:
+    desc: Apply KernelClient compatibility patch to google-colab-cli
+    cmds:
+      - uv run python patch_colab_cli.py
+
+
