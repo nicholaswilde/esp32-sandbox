@@ -203,3 +203,12 @@ When searching for patterns or text in the codebase via the shell, always use `r
 - When creating or running Python scripts, **always use the `uv` command** (e.g., `uv run`, `uv add`).
 - Manage all Python dependencies by creating or updating a `pyproject.toml` file.
 - Ensure that the `uv.lock` file is generated or updated whenever dependencies change. Do not rely on `requirements.txt` or standard `pip`.
+
+## Google Colab Usage
+- **Always use the Free Tier**: When provisioning sessions, running CLI commands, creating scripts, or authoring notebooks for Google Colab, strictly restrict usage to the free tier.
+- **Permitted Accelerators**: Use `--gpu T4` for free-tier GPU acceleration, or omit the accelerator flag to fall back to standard free-tier CPU.
+- **Prohibited Accelerators**: Never select or configure paid accelerators (such as `A100`, `H100`, or `L4`) or features requiring paid Colab compute units.
+- **Resource Hygiene**: Ensure sessions are released promptly with `colab stop -s <name>` after execution to avoid lingering idle allocations.
+- **CLI Patch for `KernelClient`**: If `colab exec` or `colab run` fails with `AttributeError: module 'jupyter_kernel_client' has no attribute 'KernelClient'`, run `task colab-patch` (or `python projects/s3-tiny-stories/patch_colab_cli.py`). See [`docs/colab_cli_patch.md`](docs/colab_cli_patch.md) for full details.
+
+
