@@ -1,6 +1,54 @@
-.pio
-.codegraph/
-.env
+# PlatformIO & Embedded Builds
 .pio/
+compile_commands.json
+.clangd/
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
 config.h
 secrets.h
+credentials.json
+*.pem
+*.key
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Jupyter & Google Colab
+.ipynb_checkpoints/
+*_output.ipynb
+
+# Machine Learning Checkpoints & Runs
+runs/
+*.pt
+*.pth
+
+# Code Analysis & Tooling
+.codegraph/
+*.log
+
+# Archives & Temporary Packages
+*.tar.gz
+*.tar
+*.zip
+
+# OS & Editor Artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
