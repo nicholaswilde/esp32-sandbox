@@ -113,8 +113,10 @@ def run_quantize(work_dir: Path, output_dir: Path):
 def run_train(work_dir: Path, output_dir: Path, is_full: bool):
     target_core = 15000000 if is_full else 1500000
     steps = 5000 if is_full else 500
-    tag = f"baseline_v32768_c{target_core}_s0"
-    log(f"=== Action: Train Custom TinyLM Model (Full={is_full}, Steps={steps}) ===")
+    tag_suffix = f"v32768_c{target_core}"
+    checkpoint_tag = f"ple-{tag_suffix}-s0"
+    tag_bin = f"ple_{tag_suffix}_s0.bin"
+    log(f"=== Action: Train Custom TinyLM PLE Model (Full={is_full}, Steps={steps}) ===")
 
     # Step 1: Prepare data and tokenizer
     log("Preparing dataset slice and BPE tokenizer...")
@@ -132,7 +134,7 @@ def run_train(work_dir: Path, output_dir: Path, is_full: bool):
             "-m",
             "research.tinystories.train",
             "--arm",
-            "baseline",
+            "ple",
             "--vocab",
             "32768",
             "--target-core",
@@ -141,6 +143,11 @@ def run_train(work_dir: Path, output_dir: Path, is_full: bool):
             str(steps),
             "--seed",
             "0",
+            "--tag",
+            tag_suffix,
+            "--eval-every",
+            "50",
+            "--profile-memory",
             "--micro-batch-size",
             "8",
         ],
@@ -158,7 +165,7 @@ def run_train(work_dir: Path, output_dir: Path, is_full: bool):
             "research.tinystories.export",
             "--tokenizer",
             str(tok_path),
-            tag,
+            checkpoint_tag,
         ],
         cwd=str(work_dir),
         check=True,
@@ -171,6 +178,12 @@ def run_train(work_dir: Path, output_dir: Path, is_full: bool):
             dest = output_dir / f.name
             shutil.copy2(f, dest)
             log(f"Staged model binary {dest} ({dest.stat().st_size / (1024*1024):.2f} MB)")
+            shutil.copy2(f, output_dir / tag_bin)
+            log(f"Staged model binary {output_dir / tag_bin}")
+        for ext in ("*.txt", "*.npz"):
+            for f in art_dir.glob(ext):
+                shutil.copy2(f, output_dir / f.name)
+                log(f"Staged reference {output_dir / f.name}")
     if tok_path.exists():
         shutil.copy2(tok_path, output_dir / "tokenizer.json")
         log(f"Staged {output_dir / 'tokenizer.json'}")
@@ -205,6 +218,8 @@ def main():
     log("Artifacts available in /content/output/:")
     for item in output_dir.iterdir():
         log(f"  - {item.name} ({item.stat().st_size:,} bytes)")
+
+    (output_dir / ".success").write_text("OK", encoding="utf-8")
 
 
 if __name__ == "__main__":

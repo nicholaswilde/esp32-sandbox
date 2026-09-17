@@ -51,19 +51,19 @@ tasks:
       - uv run python -m research.tinystories.prepare --vocab 32768
 
   train-test:
-    desc: Train a quick 1.5M parameter TinyLM model (500 steps) for testing
+    desc: Train a quick 1.5M parameter TinyLM PLE model (500 steps) for testing
     cmds:
-      - uv run python -m research.tinystories.train --arm baseline --vocab 32768 --target-core 1500000 --steps 500 --seed 0 --micro-batch-size 4 --profile-memory
+      - uv run python -m research.tinystories.train --arm ple --vocab 32768 --target-core 1500000 --steps 500 --seed 0 --tag v32768_c1500000 --micro-batch-size 4 --profile-memory
 
   train-full:
-    desc: Train a full 15M parameter TinyLM model (5000 steps)
+    desc: Train a full 15M parameter TinyLM PLE model (5000 steps)
     cmds:
-      - uv run python -m research.tinystories.train --arm baseline --vocab 32768 --target-core 15000000 --steps 5000 --seed 0 --micro-batch-size 4 --profile-memory
+      - uv run python -m research.tinystories.train --arm ple --vocab 32768 --target-core 15000000 --steps 5000 --seed 0 --tag v32768_c15000000 --micro-batch-size 4 --profile-memory
 
   export-test:
     desc: Export the quick 1.5M test model to binary format
     cmds:
-      - uv run python -m research.tinystories.export --tokenizer data/tinystories/vocab-32768/tokenizer.json baseline_v32768_c1500000_s0
+      - uv run python -m research.tinystories.export --tokenizer data/tinystories/vocab-32768/tokenizer.json ple-v32768_c1500000-s0
 
   colab-check:
     desc: Check Google Colab CLI authentication status

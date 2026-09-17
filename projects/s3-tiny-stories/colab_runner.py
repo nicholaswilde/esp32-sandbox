@@ -110,9 +110,23 @@ def create_payload_tar(tar_path: Path):
                 tar.add(src, arcname=item, filter=filter_tar)
 
 
-def execute_build(session_name: str, action: str, keep_session: bool, force_cpu: bool):
+def execute_build(
+    session_name: str,
+    action: str,
+    keep_session: bool,
+    force_cpu: bool,
+    timeout: int | None = None,
+):
     if not check_auth():
         sys.exit(1)
+
+    if timeout is None:
+        if action == "train-full":
+            timeout = 14400  # 4 hours
+        elif action == "train-test":
+            timeout = 3600   # 1 hour
+        else:
+            timeout = 1800   # 30 mins
 
     # Auto-heal google-colab-cli KernelClient AttributeError if needed
     try:
@@ -141,14 +155,26 @@ def execute_build(session_name: str, action: str, keep_session: bool, force_cpu:
             run_cmd(["colab", "upload", "-s", session_name, str(tar_path), "/content/payload.tar.gz"])
             run_cmd(["colab", "upload", "-s", session_name, str(PROJECT_DIR / "colab_remote_task.py"), "/content/colab_remote_task.py"])
 
-            # Execute remote task
-            log(f"Executing remote action: {action} (timeout: 3600s)...")
+            # Execute remote task with streaming output
+            log(f"Executing remote action: {action} (timeout: {timeout}s)...")
             exec_code = (
-                f"import subprocess, sys\n"
-                f"subprocess.run([sys.executable, '/content/colab_remote_task.py', '--action', '{action}'], check=True)\n"
+                "import os, subprocess, sys\n"
+                "if os.path.exists('/content/output/.success'):\n"
+                "    os.remove('/content/output/.success')\n"
+                f"p = subprocess.Popen([sys.executable, '-u', '/content/colab_remote_task.py', '--action', '{action}'], "
+                "stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)\n"
+                "for line in p.stdout:\n"
+                "    sys.stdout.write(line)\n"
+                "    sys.stdout.flush()\n"
+                "p.wait()\n"
+                "if p.returncode == 0:\n"
+                "    with open('/content/output/.success', 'w') as f:\n"
+                "        f.write('OK')\n"
+                "else:\n"
+                f"    raise RuntimeError(f'Remote action {action} failed with exit code {{p.returncode}}')\n"
             )
             proc = subprocess.Popen(
-                ["colab", "exec", "-s", session_name, "--timeout", "3600"],
+                ["colab", "exec", "-s", session_name, "--timeout", str(timeout)],
                 stdin=subprocess.PIPE,
                 text=True,
             )
@@ -156,6 +182,17 @@ def execute_build(session_name: str, action: str, keep_session: bool, force_cpu:
             if proc.returncode != 0:
                 log(f"Remote execution failed with exit code {proc.returncode}")
                 sys.exit(proc.returncode)
+
+            # Verify remote success status before downloading artifacts
+            with tempfile.NamedTemporaryFile() as sf:
+                res = subprocess.run(
+                    ["colab", "download", "-s", session_name, "/content/output/.success", sf.name],
+                    capture_output=True,
+                    text=True,
+                )
+                if res.returncode != 0:
+                    log(f"Remote action '{action}' failed on Colab VM (missing success confirmation).")
+                    sys.exit(1)
 
             # Download staged artifacts back to local repository
             log("Downloading artifacts from Colab VM...")
@@ -174,10 +211,17 @@ def execute_build(session_name: str, action: str, keep_session: bool, force_cpu:
             else:
                 art_dir = PROJECT_DIR / "artifacts" / "tinystories"
                 art_dir.mkdir(parents=True, exist_ok=True)
-                tag = "baseline_v32768_c15000000_s0.bin" if action == "train-full" else "baseline_v32768_c1500000_s0.bin"
+                tag = "ple_v32768_c15000000_s0.bin" if action == "train-full" else "ple_v32768_c1500000_s0.bin"
                 out_local = art_dir / tag
                 run_cmd(["colab", "download", "-s", session_name, f"/content/output/{tag}", str(out_local)])
                 log(f"Custom trained model saved to: {out_local} ({out_local.stat().st_size:,} bytes)")
+
+                # Also download references if available
+                for ref_name in ("model.bin", "tokenizer.json", "golden.txt"):
+                    try:
+                        run_cmd(["colab", "download", "-s", session_name, f"/content/output/{ref_name}", str(art_dir / ref_name)], check=False)
+                    except Exception:
+                        pass
 
             log("Build finished successfully! Ready to flash to ESP32-S3 via 'task flash-model'.")
 
@@ -215,6 +259,7 @@ def main():
     build_p.add_argument("-s", "--session", default=SESSION_DEFAULT, help="Session name")
     build_p.add_argument("--keep", action="store_true", help="Keep VM session running after task finishes")
     build_p.add_argument("--cpu", action="store_true", help="Force CPU instead of T4 GPU")
+    build_p.add_argument("--timeout", type=int, default=None, help="Execution timeout in seconds")
 
     args = parser.parse_args()
 
@@ -225,7 +270,7 @@ def main():
     elif args.command == "stop-session":
         stop_session(args.session)
     elif args.command == "build":
-        execute_build(args.session, args.action, args.keep, args.cpu)
+        execute_build(args.session, args.action, args.keep, args.cpu, args.timeout)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ runs/
 # Jupyter & Google Colab Artifacts
 .ipynb_checkpoints/
 *_output.ipynb
+artifacts/
 
 # Temporary Payload Archives & Logs
 *.tar.gz
