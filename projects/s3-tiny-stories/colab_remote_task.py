@@ -219,7 +219,7 @@ def main():
     for item in output_dir.iterdir():
         log(f"  - {item.name} ({item.stat().st_size:,} bytes)")
 
-    (output_dir / ".success").write_text("OK", encoding="utf-8")
+    (output_dir / "status.txt").write_text("SUCCESS\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

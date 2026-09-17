@@ -157,10 +157,11 @@ def execute_build(
 
             # Execute remote task with streaming output
             log(f"Executing remote action: {action} (timeout: {timeout}s)...")
+            status_file = "/content/output/status.txt"
             exec_code = (
                 "import os, subprocess, sys\n"
-                "if os.path.exists('/content/output/.success'):\n"
-                "    os.remove('/content/output/.success')\n"
+                f"if os.path.exists('{status_file}'):\n"
+                f"    os.remove('{status_file}')\n"
                 f"p = subprocess.Popen([sys.executable, '-u', '/content/colab_remote_task.py', '--action', '{action}'], "
                 "stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)\n"
                 "for line in p.stdout:\n"
@@ -168,8 +169,8 @@ def execute_build(
                 "    sys.stdout.flush()\n"
                 "p.wait()\n"
                 "if p.returncode == 0:\n"
-                "    with open('/content/output/.success', 'w') as f:\n"
-                "        f.write('OK')\n"
+                f"    with open('{status_file}', 'w') as f:\n"
+                "        f.write('SUCCESS\\n')\n"
                 "else:\n"
                 f"    raise RuntimeError(f'Remote action {action} failed with exit code {{p.returncode}}')\n"
             )
@@ -184,15 +185,15 @@ def execute_build(
                 sys.exit(proc.returncode)
 
             # Verify remote success status before downloading artifacts
-            with tempfile.NamedTemporaryFile() as sf:
-                res = subprocess.run(
-                    ["colab", "download", "-s", session_name, "/content/output/.success", sf.name],
-                    capture_output=True,
-                    text=True,
-                )
-                if res.returncode != 0:
-                    log(f"Remote action '{action}' failed on Colab VM (missing success confirmation).")
-                    sys.exit(1)
+            status_local = Path(tmpdir) / "status.txt"
+            res = subprocess.run(
+                ["colab", "download", "-s", session_name, status_file, str(status_local)],
+                capture_output=True,
+                text=True,
+            )
+            if res.returncode != 0 or not status_local.exists() or "SUCCESS" not in status_local.read_text():
+                log(f"Remote action '{action}' failed on Colab VM (missing success confirmation).")
+                sys.exit(1)
 
             # Download staged artifacts back to local repository
             log("Downloading artifacts from Colab VM...")
