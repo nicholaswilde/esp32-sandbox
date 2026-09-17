@@ -32,6 +32,7 @@ build/
 
 # Machine Learning Checkpoints & Runs
 runs/
+artifacts/
 *.pt
 *.pth
 
