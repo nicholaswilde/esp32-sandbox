@@ -1,0 +1,20 @@
+# Python & Virtual Environments
+__pycache__/
+.venv/
+
+# Datasets and Tokenizer outputs
+data/
+
+# Model Checkpoints and Training Logs
+runs/
+*.pt
+
+# Exported Model Binaries
+*.bin
+
+# PlatformIO build files
+.pio/
+
+# Temporary Payload Archives & Logs
+*.tar.gz
+*.log

@@ -30,6 +30,7 @@ tasks:
   build:all:
     desc: Build all sandbox projects
     deps:
+      - build:s3-sourdough
       - build:cyd-ntp-stratum1
       - build:cyd-ethernet-bruce
       - build:s3-tiny-stories
@@ -37,6 +38,7 @@ tasks:
   test:all:
     desc: Run tests for all sandbox projects
     deps:
+      - test:s3-sourdough
       - test:cyd-ntp-stratum1
       - test:cyd-ethernet-bruce
       - test:s3-tiny-stories
@@ -82,3 +84,15 @@ tasks:
     dir: projects/s3-tiny-stories/pc_tools
     cmds:
       - uv run --with numpy --with torch --with huggingface-hub python export_model.py stories15M_q4.bin
+
+  build:s3-sourdough:
+    desc: Build the s3-sourdough sandbox project
+    dir: projects/s3-sourdough
+    cmds:
+      - pio run
+
+  test:s3-sourdough:
+    desc: Run host-native tests for the s3-sourdough sandbox project
+    dir: projects/s3-sourdough
+    cmds:
+      - pio test -e native

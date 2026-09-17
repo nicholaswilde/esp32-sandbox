@@ -33,8 +33,10 @@ build/
 # Machine Learning Checkpoints & Runs
 runs/
 artifacts/
+data/
 *.pt
 *.pth
+*.bin
 
 # Code Analysis & Tooling
 .codegraph/

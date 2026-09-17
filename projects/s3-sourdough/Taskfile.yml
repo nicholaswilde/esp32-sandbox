@@ -1,0 +1,50 @@
+---
+version: '3'
+
+tasks:
+  build:
+    desc: Build the firmware
+    cmds:
+      - pio run -e esp32-s3-devkitc-1
+
+  flash:
+    desc: Flash the firmware to the ESP32-S3
+    cmds:
+      - pio run -e esp32-s3-devkitc-1 --target upload
+
+  monitor:
+    desc: Open serial monitor
+    cmds:
+      - pio device monitor
+
+  generate:
+    desc: Generate and expand curated Sourdough Q&A dataset
+    cmds:
+      - uv run python -m research.sourdough.generate --samples 2500
+
+  prepare:
+    desc: Train 2048-vocab BPE tokenizer and export token bins for Sourdough
+    cmds:
+      - uv run python -m research.sourdough.prepare --vocab 2048
+
+  train:
+    desc: Train Sourdough PLE micro-LLM (600 steps)
+    cmds:
+      - uv run python -m research.sourdough.train --arm ple --vocab 2048 --steps 600 --eval-every 100
+
+  sample:
+    desc: Query the trained Sourdough model with a prompt (e.g. task sample PROMPT="Why is my bread gummy?")
+    vars:
+      PROMPT: '{{.PROMPT | default "Why is there liquid on top of my sourdough starter?"}}'
+    cmds:
+      - uv run python -m research.sourdough.sample "{{.PROMPT}}"
+
+  flash-model:
+    desc: Flash the compiled model binary to partition at 0x110000
+    cmds:
+      - esptool --baud 921600 --port /dev/ttyACM0 write-flash 0x110000 pc_tools/sourdough_q4.bin
+
+  upload-model:
+    desc: Upload Sourdough model bundle (README.md, LICENSE, metadata.json, *.bin, tokenizer.json) to Hugging Face Hub
+    cmds:
+      - uv run python upload_model_hf.py --path pc_tools/
