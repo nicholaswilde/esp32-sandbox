@@ -95,4 +95,18 @@ tasks:
     cmds:
       - uv run python patch_colab_cli.py
 
+  upload-model:
+    desc: Upload pre-quantized stories15M_q4.bin and tokenizer to Hugging Face Hub
+    cmds:
+      - uv run python upload_model_hf.py --path pc_tools/stories15M_q4.bin
+
+  upload-custom:
+    desc: Upload custom PLE trained model artifacts to Hugging Face Hub (specify dir via DIR=...)
+    vars:
+      DIR: '{{.DIR | default "artifacts/tinystories"}}'
+    cmds:
+      - uv run python upload_model_hf.py --path {{.DIR}}
+
+
+
 

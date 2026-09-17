@@ -17,6 +17,7 @@ Ensure you have the following tools installed on your host machine:
 *   [PlatformIO Core (CLI)](https://docs.platformio.org/en/latest/core/index.html)
 *   [go-task](https://taskfile.dev/)
 *   [uv](https://github.com/astral-sh/uv) (for Python dependency management)
+*   [huggingface-hub](https://huggingface.co/docs/huggingface_hub/en/guides/cli) (`hf` CLI) - for downloading and uploading model weights and tokenizers
 *   [esptool.py](https://docs.espressif.com/projects/esptool/en/latest/esp32/)
 *   [google-colab-cli](https://github.com/googlecolab/colab-cli) (`colab`) - optional, for running builds and training on Google Colab Free Tier
 
@@ -175,6 +176,46 @@ Export the trained PyTorch checkpoint into the packed binary format for the ESP3
 task export-test
 ```
 *(Or invoke `research.tinystories.export` directly for custom checkpoint tags).* Once exported, flash the binary using `task flash-model`.
+
+### 5. Upload Model to Hugging Face Hub
+
+You can publish trained checkpoints, INT4 quantized weights, and tokenizer assets directly to Hugging Face Hub.
+
+#### Uploaded File Bundle
+The upload script automatically bundles and stages 5 essential files:
+*   **`README.md`**: Model card with metadata tags, hardware requirements (ESP32-S3, 16MB Flash, 8MB PSRAM, `0x110000` flash offset), and `esptool` flashing commands.
+*   **`LICENSE`**: Repository Apache 2.0 license.
+*   **`metadata.json`**: Model architecture dimensions, INT4 quantization group sizes, and partition offset specifications.
+*   **`*.bin`**: Compiled INT4 model weights (e.g. `stories15M_q4.bin`, `model.bin`).
+*   **`tokenizer.json`**: BPE / SentencePiece tokenizer vocabulary definition.
+
+#### Authentication
+Authenticate your Hugging Face CLI once:
+```bash
+uv run hf auth login
+# or with global hf: hf auth login
+```
+
+#### Upload Commands
+```bash
+# 1. Preview upload files and sizes without pushing (Dry Run)
+uv run python upload_model_hf.py --dry-run
+
+# 2. Upload pre-quantized 15M INT4 bundle (stories15M_q4.bin + tokenizer + metadata + license + model card)
+task upload-model
+
+# 3. Upload custom PLE trained model artifacts directory
+task upload-custom DIR=artifacts/tinystories/ple-v32768_c1500000-s0
+
+# 4. Custom destination repository and commit message
+uv run python upload_model_hf.py \
+  --path pc_tools/stories15M_q4.bin \
+  --repo-id <username>/<custom-repo> \
+  --commit-message "Upload 15M INT4 TinyStories weights"
+```
+*(Tip: You can also use the `.agents/skills/upload-model-hf` agent skill or native `hf upload`).*
+
+
 
 ## :wrench: Troubleshooting
 

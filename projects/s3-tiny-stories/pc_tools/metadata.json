@@ -1,0 +1,22 @@
+{
+  "model_name": "stories15M_q4",
+  "architecture": "llama2.c",
+  "base_model": "karpathy/tinyllamas",
+  "quantization": "int4",
+  "group_size": 64,
+  "dim": 288,
+  "hidden_dim": 768,
+  "n_layers": 6,
+  "n_heads": 6,
+  "n_kv_heads": 6,
+  "vocab_size": 32000,
+  "seq_len": 256,
+  "shared_classifier": true,
+  "target_hardware": {
+    "mcu": "ESP32-S3",
+    "recommended_module": "ESP32-S3-DevKitC-1-N16R8",
+    "flash_required_mb": 16,
+    "psram_required_mb": 8,
+    "flash_partition_offset": "0x110000"
+  }
+}
