@@ -41,7 +41,7 @@ def get_default_repo(api: HfApi) -> str:
             return f"{username}/{DEFAULT_REPO_NAME}"
     except Exception:
         pass
-    return f"nicholaswilde/{DEFAULT_REPO_NAME}"
+    return f"nicholascwilde/{DEFAULT_REPO_NAME}"
 
 
 def download_artifacts(

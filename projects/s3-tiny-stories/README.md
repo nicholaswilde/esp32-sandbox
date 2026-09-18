@@ -1,6 +1,8 @@
 # :book: S3 Tiny Stories :robot:
 
-This project runs a quantized language model locally on an ESP32-S3. It utilizes a lightweight C inference engine (adapted from `llama2.c`) to generate text from the TinyStories dataset entirely offline.
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-nicholascwilde%2Fesp32--s3--tinystories-ffd21e)](https://huggingface.co/nicholascwilde/esp32-s3-tinystories)
+
+This project runs a quantized language model locally on an ESP32-S3. It utilizes a lightweight C inference engine (adapted from `llama2.c`) to generate text from the TinyStories dataset entirely offline. Pre-quantized model binaries, tokenizers, and metadata are published at [nicholascwilde/esp32-s3-tinystories](https://huggingface.co/nicholascwilde/esp32-s3-tinystories).
 
 Due to the size of the model weights, this project requires an ESP32-S3 with at least 16MB of Flash and Octal PSRAM (such as the ESP32-S3-DevKitC-1-N16R8). The weights are quantized to INT4 (~8.1 MB) and stored in a dedicated Flash partition mapped directly into address space via `esp_partition_mmap`.
 
@@ -179,6 +181,8 @@ task export-test
 
 ### 5. Upload Model to Hugging Face Hub
 
+Pre-trained model artifacts are hosted on Hugging Face Hub at **[nicholascwilde/esp32-s3-tinystories](https://huggingface.co/nicholascwilde/esp32-s3-tinystories)**.
+
 You can publish trained checkpoints, INT4 quantized weights, and tokenizer assets directly to Hugging Face Hub.
 
 #### Uploaded File Bundle
@@ -220,7 +224,7 @@ uv run python upload_model_hf.py \
 To download pre-trained weights, metadata, and tokenizer directly from Hugging Face:
 
 ```bash
-# Download from default repository (nicholaswilde/esp32-s3-tinystories)
+# Download from default repository (nicholascwilde/esp32-s3-tinystories)
 task download-model
 
 # Or download from a specific Hugging Face repository
