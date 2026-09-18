@@ -215,9 +215,23 @@ uv run python upload_model_hf.py \
 ```
 *(Tip: You can also use the `.agents/skills/upload-model-hf` agent skill or native `hf upload`).*
 
+### 6. Download Model from Hugging Face Hub
 
+To download pre-trained weights, metadata, and tokenizer directly from Hugging Face:
 
-## :wrench: Troubleshooting
+```bash
+# Download from default repository (nicholaswilde/esp32-s3-tinystories)
+task download-model
+
+# Or download from a specific Hugging Face repository
+task download-model REPO="<username>/esp32-s3-tinystories"
+
+# Or directly via Python with custom options
+uv run python download_model_hf.py --repo-id "<username>/esp32-s3-tinystories" --out-dir pc_tools/
+```
+The download script automatically saves `stories15M_q4.bin`, `tokenizer.json`, and regenerates the C decoding header (`src/generated/vocab.h`) so you can immediately flash with `task flash-model && task flash`.
+
+---
 
 *   **Serial Port Busy (`[Errno 11] Resource temporarily unavailable`)**:
     If `task flash` fails because `/dev/ttyACM0` is locked, close any active `task monitor` or serial terminals:

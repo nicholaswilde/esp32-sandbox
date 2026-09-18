@@ -26,8 +26,8 @@ def variant_dir(vocab_size: int) -> Path:
     return DATA_DIR / f"vocab-{vocab_size}"
 
 
-def train_tokenizer(text: str, vocab_size: int, out_path: Path) -> Tokenizer:
-    if out_path.exists():
+def train_tokenizer(text: str, vocab_size: int, out_path: Path, force: bool = False) -> Tokenizer:
+    if out_path.exists() and not force:
         print(f"Loading existing tokenizer from {out_path}...")
         return Tokenizer.from_file(str(out_path))
 
@@ -85,7 +85,7 @@ def main():
     with open(RAW_FILE, "r", encoding="utf-8") as f:
         text = f.read()
 
-    tok = train_tokenizer(text, args.vocab, tok_path)
+    tok = train_tokenizer(text, args.vocab, tok_path, force=args.force)
     eot = tok.token_to_id("<|endoftext|>")
 
     print("Encoding Q&A documents...")
@@ -105,8 +105,13 @@ def main():
     for i, doc in enumerate(raw_docs):
         enc = tok.encode(doc)
         target_list = val_ids if i in val_indices else train_ids
-        target_list.extend(enc.ids)
         target_list.append(eot)
+        target_list.extend(enc.ids)
+
+    if train_ids:
+        train_ids.append(eot)
+    if val_ids:
+        val_ids.append(eot)
 
     print(f"Train tokens: {len(train_ids):,} ({len(train_ids)*2/1024:.1f} KB)")
     print(f"Val tokens:   {len(val_ids):,} ({len(val_ids)*2/1024:.1f} KB)")

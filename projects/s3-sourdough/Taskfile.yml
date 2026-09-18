@@ -20,12 +20,24 @@ tasks:
   generate:
     desc: Generate and expand curated Sourdough Q&A dataset
     cmds:
-      - uv run python -m research.sourdough.generate --samples 2500
+      - uv run python -m research.sourdough.generate --samples 5000
 
   prepare:
     desc: Train 2048-vocab BPE tokenizer and export token bins for Sourdough
     cmds:
       - uv run python -m research.sourdough.prepare --vocab 2048
+
+  validate-dataset:
+    desc: Verify dataset integrity, token lengths, and roundtrip fidelity without training
+    cmds:
+      - uv run python -m research.sourdough.verify_dataset
+
+  query-dataset:
+    desc: Query the dataset directly to see answers and matches before training (e.g. task query-dataset QUERY="Why is my bread gummy?")
+    vars:
+      QUERY: '{{.QUERY | default "Why is there liquid on top of my sourdough starter?"}}'
+    cmds:
+      - uv run python -m research.sourdough.verify_dataset --query "{{.QUERY}}"
 
   train:
     desc: Train Sourdough PLE micro-LLM (600 steps)
@@ -39,6 +51,13 @@ tasks:
     cmds:
       - uv run python -m research.sourdough.sample "{{.PROMPT}}"
 
+  quantize:
+    desc: Quantize trained checkpoint to INT4 packed binary format and update C headers
+    cmds:
+      - uv run python pc_tools/export_model.py
+      - uv run python pc_tools/generate_vocab.py
+      - uv run python pc_tools/generate_tokenizer_asset.py
+
   flash-model:
     desc: Flash the compiled model binary to partition at 0x110000
     cmds:
@@ -48,3 +67,41 @@ tasks:
     desc: Upload Sourdough model bundle (README.md, LICENSE, metadata.json, *.bin, tokenizer.json) to Hugging Face Hub
     cmds:
       - uv run python upload_model_hf.py --path pc_tools/
+
+  download-model:
+    desc: Download Sourdough model bundle from Hugging Face Hub (e.g. task download-model REPO=nicholaswilde/esp32-s3-sourdough)
+    vars:
+      REPO: '{{.REPO | default ""}}'
+    cmds:
+      - uv run python download_model_hf.py {{if .REPO}}--repo-id "{{.REPO}}"{{end}}
+
+  colab-auth:
+    desc: Verify Google Colab CLI authentication
+    cmds:
+      - uv run python colab_runner.py check-auth
+
+  colab-start:
+    desc: Provision a free-tier Colab VM session (T4 GPU fallback to CPU)
+    cmds:
+      - uv run python colab_runner.py start-session
+
+  colab-stop:
+    desc: Stop active Colab VM session
+    cmds:
+      - uv run python colab_runner.py stop-session
+
+  colab-train-test:
+    desc: Run fast smoke training test (50 steps) on Colab VM
+    cmds:
+      - uv run python colab_runner.py build --action train-test
+
+  colab-train:
+    desc: Run Sourdough PLE micro-LLM training (600 steps) on Colab VM
+    cmds:
+      - uv run python colab_runner.py build --action train
+
+  colab-train-full:
+    desc: Run extended Sourdough PLE micro-LLM training (1200 steps) on Colab VM
+    cmds:
+      - uv run python colab_runner.py build --action train-full
+

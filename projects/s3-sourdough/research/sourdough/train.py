@@ -35,24 +35,73 @@ def get_device():
 
 class Batcher:
     def __init__(self, split: str, batch_size: int, seq_len: int, device: str, dataset_dir: Path, seed: int = 42):
-        self.data = np.memmap(dataset_dir / f"{split}.bin", dtype=np.uint16, mode="r")
         self.bs, self.sl, self.device = batch_size, seq_len, device
         self.rng = np.random.default_rng(1234 if split == "val" else seed)
 
+        bin_path = dataset_dir / f"{split}.bin"
+        self.data = np.fromfile(bin_path, dtype=np.uint16)
+
+        # Parse document boundaries and prompt-completion boundaries for SFT loss masking
+        tok_file = dataset_dir / "tokenizer.json"
+        self.docs, self.colons = [], []
+
+        if tok_file.exists():
+            from tokenizers import Tokenizer
+            tok = Tokenizer.from_file(str(tok_file))
+            eot = tok.token_to_id("<|endoftext|>")
+            asst_ids = tok.encode("Assistant:").ids
+            eot_idx = np.where(self.data == eot)[0]
+
+            for i in range(len(eot_idx) - 1):
+                s, e = eot_idx[i], eot_idx[i + 1]
+                doc = self.data[s : e + 1]
+                if len(doc) <= 2:
+                    continue
+                colon_pos = -1
+                if len(asst_ids) == 2:
+                    matches = np.where((doc[:-1] == asst_ids[0]) & (doc[1:] == asst_ids[1]))[0]
+                    if len(matches) > 0:
+                        colon_pos = matches[0] + 1
+                elif len(asst_ids) == 1:
+                    matches = np.where(doc == asst_ids[0])[0]
+                    if len(matches) > 0:
+                        colon_pos = matches[0]
+                if colon_pos > 0:
+                    self.docs.append(doc)
+                    self.colons.append(colon_pos)
+
     def stream(self):
-        max_idx = len(self.data) - self.sl - 1
-        while True:
-            ix = self.rng.integers(0, max_idx, self.bs)
-            x_arr = np.empty((self.bs, self.sl), dtype=np.int64)
-            y_arr = np.empty((self.bs, self.sl), dtype=np.int64)
-            for j, i in enumerate(ix):
-                chunk = self.data[i : i + self.sl + 1]
-                x_arr[j] = chunk[:-1]
-                y_arr[j] = chunk[1:]
-            yield (
-                torch.from_numpy(x_arr).to(self.device, non_blocking=True),
-                torch.from_numpy(y_arr).to(self.device, non_blocking=True),
-            )
+        if self.docs:
+            n_docs = len(self.docs)
+            while True:
+                ix = self.rng.integers(0, n_docs, self.bs)
+                x_arr = np.zeros((self.bs, self.sl), dtype=np.int64)
+                y_arr = np.full((self.bs, self.sl), -1, dtype=np.int64)
+                for j, i in enumerate(ix):
+                    d = self.docs[i]
+                    c = self.colons[i]
+                    L = min(len(d), self.sl)
+                    x_arr[j, :L] = d[:L]
+                    if c < L - 1:
+                        y_arr[j, c : L - 1] = d[c + 1 : L]
+                yield (
+                    torch.from_numpy(x_arr).to(self.device, non_blocking=True),
+                    torch.from_numpy(y_arr).to(self.device, non_blocking=True),
+                )
+        else:
+            max_idx = len(self.data) - self.sl - 1
+            while True:
+                ix = self.rng.integers(0, max_idx, self.bs)
+                x_arr = np.empty((self.bs, self.sl), dtype=np.int64)
+                y_arr = np.empty((self.bs, self.sl), dtype=np.int64)
+                for j, i in enumerate(ix):
+                    chunk = self.data[i : i + self.sl + 1]
+                    x_arr[j] = chunk[:-1]
+                    y_arr[j] = chunk[1:]
+                yield (
+                    torch.from_numpy(x_arr).to(self.device, non_blocking=True),
+                    torch.from_numpy(y_arr).to(self.device, non_blocking=True),
+                )
 
 
 def lr_at(step: int, total_steps: int, base_lr: float, warmup: int) -> float:

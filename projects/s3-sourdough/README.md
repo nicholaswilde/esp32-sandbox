@@ -13,11 +13,12 @@ Inspired by [slvDev/esp32-ai-barista](https://huggingface.co/slvDev/esp32-ai-bar
 *   **Vocabulary**: 2,048-token ByteLevel BPE tokenizer tailored for baking terms.
 *   **Quantization**: INT4 grouped quantization (`group_size = 128`) mapped directly from flash via `esp_partition_mmap` at offset `0x110000`.
 *   **Troubleshooting Domains**:
-    1.  **Starter Health**: Hooch, sluggish rising, acetone/nail polish smell, mold detection, feeding ratios (1:1:1 vs 1:5:5), refrigeration.
-    2.  **Bulk Fermentation**: Volume rise indicators, under-fermentation (fool's crumb), over-fermentation, poke test, stretch & folds, dough temperature.
-    3.  **Hydration & Shaping**: Sticky dough handling, banneton sticking (50/50 rice flour dusting), cold retard benefits, autolyse, beginner hydrations.
-    4.  **Scoring & Baking**: Blade angle (30–45° for ears), steam importance, Dutch oven temps & times, gummy crumb prevention, burnt bottom deflection.
-    5.  **Baker's Math**: Baker's percentages, standard 100/70/20/2 sourdough formula, salt functions.
+    1.  **Starter Health**: Hooch, sluggish rising, acetone/nail polish smell, mold detection, feeding ratios (1:1:1 vs 1:5:5), refrigeration, stiff starters (50-60%), discard shelf life, tap water/chlorine effects, flour selection.
+    2.  **Bulk Fermentation**: Volume rise indicators, under-fermentation (fool's crumb), over-fermentation, poke test, stretch & folds, coil folds, dough temperature, aliquot jars, dough acidity & gluten breakdown.
+    3.  **Hydration & Shaping**: Sticky dough handling, banneton sticking (rice flour), cold retard benefits, autolyse vs fermentolyse, beginner hydrations, flour protein content (AP vs Bread flour), whole grain hydration adjustments, batard vs boule shaping, inclusions (cheese, jalapeño), sandwich loaf pans.
+    4.  **Scoring & Baking**: Blade angle (30–45° for ears), steam importance, Dutch oven temps & times, gummy crumb prevention, burnt bottom deflection, open bakes with lava rocks/baking steel, ice cubes in Dutch oven, micro-blisters, bread storage.
+    5.  **Baker's Math**: Baker's percentages, standard 100/70/20/2 sourdough formula, salt functions, recipe scaling for 2 loaves, total hydration calculations including starter.
+    6.  **Guardrails**: Polite rejection for out-of-domain / non-baking queries.
 
 ---
 
@@ -42,13 +43,13 @@ cd projects/s3-sourdough
 *(Or set `CURRENT_PROJECT=s3-sourdough` in the root `.env` file).*
 
 ### 1. Generate the Q&A Dataset
-Expands the 28 curated sourdough troubleshooting topics into 2,500 conversational Q&A training pairs with varied prefixes and phrasings:
+Expands the 50 curated sourdough troubleshooting topics into 5,000 conversational Q&A training pairs with varied prefixes and phrasings:
 ```bash
 task generate
 ```
 Outputs in `data/sourdough/raw/`:
 * `sourdough_qa.jsonl` (Structured JSON lines dataset)
-* `sourdough_corpus.txt` (Text corpus formatted with `<|endoftext|>` delimiters, ~93k words)
+* `sourdough_corpus.txt` (Text corpus formatted with `<|endoftext|>` delimiters, ~233k words)
 
 ### 2. Train Tokenizer and Prepare Binary Bins
 Trains a compact 2,048-token ByteLevel BPE tokenizer and encodes the corpus into `uint16` memmapped arrays:
@@ -59,6 +60,17 @@ Outputs in `data/sourdough/vocab-2048/`:
 * `tokenizer.json` (BPE vocabulary and merge table)
 * `train.bin` (95% training split, ~115k tokens)
 * `val.bin` (5% validation split, ~6k tokens)
+
+### 2.5. Test and Validate the Dataset (Without Training)
+Verify tokenizer roundtrip fidelity, context lengths, token distributions, or query the dataset directly before training:
+```bash
+# Run integrity checks (sequence length <= 128, round-trip decode, ID bounds):
+task validate-dataset
+
+# Query the dataset directly to see matched Q&A pairs:
+task query-dataset QUERY="Why is the inside of my bread gummy?"
+task query-dataset QUERY="My dough is too sticky to shape"
+```
 
 ### 3. Train the Model
 Trains the **Per-Layer Embeddings (PLE)** micro-LLM (~2.3M parameters):
@@ -106,6 +118,29 @@ task test:s3-sourdough
 
 ---
 
+## :cloud: Google Colab Training (Free Tier)
+
+For faster cloud GPU training using Google Colab's Free Tier (T4 GPU):
+
+```bash
+# Verify authentication
+task colab-auth
+
+# Run standard training (600 steps)
+task colab-train
+
+# Or run fast smoke test (50 steps)
+task colab-train-test
+
+# Or extended training (1200 steps)
+task colab-train-full
+```
+
+Model checkpoints (`runs/sourdough/*.pt`) and tokenizer (`data/sourdough/vocab-2048/tokenizer.json`) are automatically downloaded back to your local repository.
+
+
+---
+
 ## :cloud: Hugging Face Model Hub
 
 Upload the trained weights and the 5-file bundle (`README.md`, `LICENSE`, `metadata.json`, `*.bin`, `tokenizer.json`) to Hugging Face Hub:
@@ -118,25 +153,75 @@ uv run python upload_model_hf.py --dry-run
 task upload-model
 ```
 
+### Download Pre-built Model from Hugging Face
+To download pre-trained weights and tokenizer without training locally:
+
+```bash
+# Download from default repository (nicholaswilde/esp32-s3-sourdough)
+task download-model
+
+# Or download from a specific Hugging Face repository
+task download-model REPO="<username>/esp32-s3-sourdough"
+```
+The download script automatically saves `sourdough_q4.bin`, `tokenizer.json`, `metadata.json`, and regenerates C firmware headers in `src/generated/` so you are ready to flash immediately.
+
 ---
 
-## :zap: Flashing to the ESP32-S3
+## :zap: Flashing & Interacting on the ESP32-S3
 
-1. **Flash Model Weights Partition (`0x110000`)**:
-   ```bash
-   task flash-model
-   ```
+### 1. Export & Quantize Model (INT4)
+Exports the model weights into packed INT4 binary format and generates C headers (`vocab.h`, `tokenizer_asset.h`):
+```bash
+task quantize
+```
+Artifacts generated:
+* `pc_tools/sourdough_q4.bin` (~1.14 MB INT4 model binary)
+* `src/generated/vocab.h` (UTF-8 token strings table for on-device decoding)
+* `src/generated/tokenizer_asset.h` (Compact BTK1 BPE tokenizer asset)
 
-2. **Compile and Upload Firmware**:
-   ```bash
-   task build
-   task flash
-   ```
+### 2. Flash Model Weights Partition (`0x110000`)
+Writes the packed model binary to flash offset `0x110000`:
+```bash
+task flash-model
+```
 
-3. **Open Serial Monitor**:
-   ```bash
-   task monitor
-   ```
+### 3. Compile and Upload Firmware
+Builds the C++ inference engine and uploads it to the ESP32-S3:
+```bash
+task build
+task flash
+```
+
+### 4. Interactive USB-Serial REPL
+Open the serial monitor at 115200 baud to converse directly with the assistant:
+```bash
+task monitor
+# or: pio device monitor -b 115200
+```
+
+#### Example Terminal Session
+```text
+=======================================================
+  🥖 ESP32-S3 Sourdough Baker Assistant (PLE INT4)    
+=======================================================
+[s3-sourdough] Tokenizer ready: vocab=2048, merges=1791
+[s3-sourdough] Model loaded: vocab=2048, dim=128, layers=4, heads=4, ffn=350, ple_dim=128
+[s3-sourdough] Copied 18 RMSNorm vectors to SRAM
+[s3-sourdough] Staged 43/43 core tensors to int8 in PSRAM
+[s3-sourdough] Dual-core acceleration enabled (Core 0 + Core 1)
+[s3-sourdough] Free SRAM: 284.1 KB | Free PSRAM: 6.88 MB
+
+Ready! Enter your sourdough question below:
+
+User: Why is my bread gummy inside?
+Assistant: A gummy crumb occurs when bread is sliced while still hot, or if under-baked. Let your loaf cool completely on a wire rack for at least 2 hours. Internal temperature should reach 205°F to 210°F (96°C to 99°C).
+
+[41 tokens in 1.84 s, 22.3 tok/s]
+
+User: 
+```
+
+Simply type your question and press **Enter**. Answers stream in real-time at ~20–25 tokens/second.
 
 ---
 

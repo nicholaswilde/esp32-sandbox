@@ -81,8 +81,8 @@ def main():
     parser.add_argument(
         "--samples",
         type=int,
-        default=2500,
-        help="Target number of Q&A samples to generate (default: 2500)",
+        default=5000,
+        help="Target number of Q&A samples to generate (default: 5000)",
     )
     parser.add_argument(
         "--seed",

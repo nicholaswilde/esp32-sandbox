@@ -85,7 +85,74 @@ def patch_colab_cli(sp_dir: Path) -> bool:
         print(f"[patch] Successfully patched colab_cli: {runtime_file}")
         return True
 
-    print(f"[patch] Warning: target pattern not found in {runtime_file}")
+def patch_colab_token_refresh(sp_dir: Path) -> bool:
+    common_file = sp_dir / "colab_cli" / "common.py"
+    if not common_file.exists():
+        return False
+
+    content = common_file.read_text(encoding="utf-8")
+    if "assignment_by_endpoint = {a.endpoint: a for a in assignments}" in content:
+        print(f"[patch] colab_cli/common.py already patched for token refresh: {common_file}")
+        return True
+
+    target_sync = (
+        "        assignments = self.client.list_assignments()\n"
+        "        active_endpoints = {a.endpoint for a in assignments}\n"
+        "\n"
+        "        self._sessions = local_sessions\n"
+        "        pruned = 0\n"
+        "        for name, s in list(self._sessions.items()):\n"
+        "            if s.endpoint not in active_endpoints:\n"
+        "                self.prune_session(name)\n"
+        "                pruned += 1"
+    )
+    replacement_sync = (
+        "        assignments = self.client.list_assignments()\n"
+        "        assignment_by_endpoint = {a.endpoint: a for a in assignments}\n"
+        "\n"
+        "        self._sessions = local_sessions\n"
+        "        pruned = 0\n"
+        "        for name, s in list(self._sessions.items()):\n"
+        "            if s.endpoint not in assignment_by_endpoint:\n"
+        "                self.prune_session(name)\n"
+        "                pruned += 1\n"
+        "            else:\n"
+        "                a = assignment_by_endpoint[s.endpoint]\n"
+        "                if s.token != a.runtime_proxy_info.token or s.url != a.runtime_proxy_info.url:\n"
+        "                    s.token = a.runtime_proxy_info.token\n"
+        "                    s.url = a.runtime_proxy_info.url\n"
+        "                    self.store.add(s)"
+    )
+
+    target_resolve = (
+        "    def resolve_session(self, session_name: Optional[str]) -> str:\n"
+        "        if session_name:\n"
+        "            return session_name"
+    )
+    replacement_resolve = (
+        "    def resolve_session(self, session_name: Optional[str]) -> str:\n"
+        "        if session_name:\n"
+        "            s = self.store.get(session_name)\n"
+        "            if s and s.token:\n"
+        "                try:\n"
+        "                    import base64, json, time\n"
+        "                    p = s.token.split('.')[1]\n"
+        "                    p += '=' * (-len(p) % 4)\n"
+        "                    exp = json.loads(base64.urlsafe_b64decode(p.encode('ascii'))).get('exp', 0)\n"
+        "                    if time.time() >= exp - 120:\n"
+        "                        self.sync_sessions()\n"
+        "                except Exception:\n"
+        "                    pass\n"
+        "            return session_name"
+    )
+
+    if target_sync in content and target_resolve in content:
+        new_content = content.replace(target_sync, replacement_sync).replace(target_resolve, replacement_resolve)
+        common_file.write_text(new_content, encoding="utf-8")
+        print(f"[patch] Successfully patched colab_cli token refresh: {common_file}")
+        return True
+
+    print(f"[patch] Warning: sync/resolve targets not found in {common_file}")
     return False
 
 
@@ -99,7 +166,8 @@ def main():
     for sp in sp_dirs:
         p1 = patch_jupyter_kernel_client(sp)
         p2 = patch_colab_cli(sp)
-        if p1 or p2:
+        p3 = patch_colab_token_refresh(sp)
+        if p1 or p2 or p3:
             patched_any = True
 
     if patched_any:
@@ -110,3 +178,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -107,6 +107,13 @@ tasks:
     cmds:
       - uv run python upload_model_hf.py --path {{.DIR}}
 
+  download-model:
+    desc: Download TinyStories model bundle from Hugging Face Hub (e.g. task download-model REPO=nicholaswilde/esp32-s3-tinystories)
+    vars:
+      REPO: '{{.REPO | default ""}}'
+    cmds:
+      - uv run python download_model_hf.py {{if .REPO}}--repo-id "{{.REPO}}"{{end}}
+
 
 
 

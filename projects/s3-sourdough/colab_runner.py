@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-Host-side runner for building/training s3-tiny-stories on Google Colab (Free Tier).
+Google Colab Task Runner for s3-sourdough (Free Tier).
 
-Integrates with the `colab` CLI to provision free-tier T4 GPU (or CPU) sessions,
-upload local workspace payloads, execute remote builds/training, download generated
-INT4 model binaries, and automatically clean up VM compute resources.
+Automates provisioning, uploading, remote execution, and downloading
+of trained model checkpoints and tokenizer artifacts.
+
+Usage:
+  task colab-train        # Train PLE micro-LLM (600 steps)
+  task colab-train-test   # Fast smoke test (50 steps)
+  task colab-stop         # Release Colab session
 """
 
 import argparse
@@ -16,23 +20,19 @@ import tarfile
 import tempfile
 from pathlib import Path
 
-SESSION_DEFAULT = "s3-stories"
 PROJECT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = PROJECT_DIR.parent.parent
+SESSION_DEFAULT = "s3-sourdough"
 
 
 def log(msg: str):
     print(f"[colab-runner] {msg}", flush=True)
 
 
-def run_cmd(cmd: list[str], check: bool = True, capture_output: bool = False, timeout: float | None = None) -> subprocess.CompletedProcess:
-    log(f"Running: {' '.join(cmd)}")
-    return subprocess.run(cmd, check=check, text=True, capture_output=capture_output, timeout=timeout)
-
-
 def check_colab_cli() -> bool:
     if shutil.which("colab") is None:
-        log("ERROR: 'colab' CLI is not found in PATH.")
-        log("Install it via: uv tool install google-colab-cli")
+        log("Error: 'colab' CLI not found in PATH.")
+        log("Install via: uv tool install google-colab-cli")
         return False
     return True
 
@@ -41,7 +41,6 @@ def check_auth() -> bool:
     if not check_colab_cli():
         return False
 
-    # Check if OAuth token or ADC is valid without hanging on interactive prompt
     try:
         res = subprocess.run(
             ["colab", "sessions"],
@@ -59,8 +58,6 @@ def check_auth() -> bool:
     log("Authentication required for Google Colab CLI.")
     log("Please run this one-time authorization command in your interactive terminal:")
     log("    colab sessions")
-    log("or if using Application Default Credentials (ADC):")
-    log("    gcloud auth application-default login --scopes=openid,https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/colaboratory")
     return False
 
 
@@ -90,10 +87,10 @@ def stop_session(session_name: str):
 
 
 def create_payload_tar(tar_path: Path):
-    """Create a lightweight payload tarball excluding large binaries and caches."""
+    """Create lightweight payload tarball excluding large binaries and caches."""
     log(f"Creating project payload at {tar_path}...")
-    exclude_dirs = {".venv", "__pycache__", ".git", ".pio", "data"}
-    exclude_exts = {".bin", ".pt", ".o", ".a"}
+    exclude_dirs = {".venv", "__pycache__", ".git", ".pio", "runs"}
+    exclude_exts = {".pt", ".o", ".a"}
 
     def filter_tar(tarinfo):
         path_parts = Path(tarinfo.name).parts
@@ -101,10 +98,12 @@ def create_payload_tar(tar_path: Path):
             return None
         if Path(tarinfo.name).suffix in exclude_exts:
             return None
+        if "pc_tools" in path_parts and Path(tarinfo.name).suffix == ".bin":
+            return None
         return tarinfo
 
     with tarfile.open(tar_path, "w:gz") as tar:
-        for item in ["research", "pc_tools", "colab_remote_task.py"]:
+        for item in ["research", "data", "pc_tools", "pyproject.toml", "colab_remote_task.py"]:
             src = PROJECT_DIR / item
             if src.exists():
                 tar.add(src, arcname=item, filter=filter_tar)
@@ -142,18 +141,23 @@ def execute_build(
 
     if timeout is None:
         if action == "train-full":
-            timeout = 14400  # 4 hours
-        elif action == "train-test":
+            timeout = 7200   # 2 hours
+        elif action == "train":
             timeout = 3600   # 1 hour
         else:
             timeout = 1800   # 30 mins
 
-    # Auto-heal google-colab-cli KernelClient AttributeError if needed
-    try:
-        import patch_colab_cli
-        patch_colab_cli.main()
-    except Exception as e:
-        log(f"Notice: patch check skipped: {e}")
+    # Auto-heal google-colab-cli KernelClient & token refresh patches if needed
+    patch_script = REPO_ROOT / "projects" / "s3-tiny-stories" / "patch_colab_cli.py"
+    if patch_script.exists():
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("patch_colab_cli", str(patch_script))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            mod.main()
+        except Exception as e:
+            log(f"Notice: patch check skipped: {e}")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tar_path = Path(tmpdir) / "payload.tar.gz"
@@ -172,8 +176,8 @@ def execute_build(
         try:
             # Upload payload and remote runner
             log("Uploading payload to Colab VM...")
-            run_cmd(["colab", "upload", "-s", session_name, str(tar_path), "/content/payload.tar.gz"])
-            run_cmd(["colab", "upload", "-s", session_name, str(PROJECT_DIR / "colab_remote_task.py"), "/content/colab_remote_task.py"])
+            subprocess.run(["colab", "upload", "-s", session_name, str(tar_path), "/content/payload.tar.gz"], check=True)
+            subprocess.run(["colab", "upload", "-s", session_name, str(PROJECT_DIR / "colab_remote_task.py"), "/content/colab_remote_task.py"], check=True)
 
             # Execute remote task with streaming output
             log(f"Executing remote action: {action} (timeout: {timeout}s)...")
@@ -213,30 +217,23 @@ def execute_build(
 
             # Download staged artifacts back to local repository
             log("Downloading artifacts from Colab VM...")
-            if action == "quantize":
-                out_local = PROJECT_DIR / "pc_tools" / "stories15M_q4.bin"
-                if not download_file(session_name, "/content/output/stories15M_q4.bin", out_local, check=True):
-                    sys.exit(1)
-                log(f"Quantized model saved to: {out_local} ({out_local.stat().st_size:,} bytes)")
+            runs_dir = PROJECT_DIR / "runs" / "sourdough"
+            runs_dir.mkdir(parents=True, exist_ok=True)
 
-                # Download vocab if updated
-                vocab_local = PROJECT_DIR / "src" / "generated" / "vocab.h"
-                if download_file(session_name, "/content/output/vocab.h", vocab_local, check=False):
-                    log(f"Vocabulary header saved to: {vocab_local}")
-            else:
-                art_dir = PROJECT_DIR / "artifacts" / "tinystories"
-                art_dir.mkdir(parents=True, exist_ok=True)
-                tag = "ple_v32768_c15000000_s0.bin" if action == "train-full" else "ple_v32768_c1500000_s0.bin"
-                out_local = art_dir / tag
-                if not download_file(session_name, f"/content/output/{tag}", out_local, check=True):
-                    sys.exit(1)
-                log(f"Custom trained model saved to: {out_local} ({out_local.stat().st_size:,} bytes)")
+            ckpt_name = "ple-sourdough-v1-s0.pt"
+            download_file(session_name, f"/content/output/{ckpt_name}", runs_dir / ckpt_name, check=False)
 
-                # Also download references if available
-                for ref_name in ("model.bin", "tokenizer.json", "golden.txt"):
-                    download_file(session_name, f"/content/output/{ref_name}", art_dir / ref_name, check=False)
+            pc_tools_dir = PROJECT_DIR / "pc_tools"
+            pc_tools_dir.mkdir(parents=True, exist_ok=True)
+            for fname in ["sourdough_q4.bin", "tokenizer.json", "metadata.json", "golden.txt", "golden.npz"]:
+                download_file(session_name, f"/content/output/{fname}", pc_tools_dir / fname, check=False)
 
-            log("Build finished successfully! Ready to flash to ESP32-S3 via 'task flash-model'.")
+            vocab_dir = PROJECT_DIR / "data" / "sourdough" / "vocab-2048"
+            vocab_dir.mkdir(parents=True, exist_ok=True)
+            if (pc_tools_dir / "tokenizer.json").exists() and not (vocab_dir / "tokenizer.json").exists():
+                shutil.copy2(pc_tools_dir / "tokenizer.json", vocab_dir / "tokenizer.json")
+
+            log("Training & INT4 quantization finished successfully! Artifacts saved in pc_tools/ and runs/.")
 
         finally:
             if not keep_session:
@@ -246,7 +243,7 @@ def execute_build(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Google Colab Runner for s3-tiny-stories")
+    parser = argparse.ArgumentParser(description="Google Colab Runner for s3-sourdough")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Auth check
@@ -262,12 +259,12 @@ def main():
     stop_p.add_argument("-s", "--session", default=SESSION_DEFAULT, help="Session name")
 
     # Build / Train
-    build_p = subparsers.add_parser("build", help="Run build/train task on Colab")
+    build_p = subparsers.add_parser("build", help="Run training task on Colab")
     build_p.add_argument(
         "--action",
-        choices=["quantize", "train-test", "train-full"],
-        default="quantize",
-        help="Action to perform on Colab (default: quantize)",
+        choices=["train-test", "train", "train-full"],
+        default="train",
+        help="Action to perform on Colab (default: train)",
     )
     build_p.add_argument("-s", "--session", default=SESSION_DEFAULT, help="Session name")
     build_p.add_argument("--keep", action="store_true", help="Keep VM session running after task finishes")

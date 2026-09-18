@@ -12,6 +12,7 @@ CATEGORIES = [
     "hydration_shaping",
     "scoring_baking",
     "bakers_math",
+    "guardrails",
 ]
 
 # Each entry has:
@@ -336,4 +337,267 @@ QA_ENTRIES: List[Dict] = [
         ],
         "answer": "Salt tightens the gluten structure, regulates yeast fermentation rate, and provides essential flavor. Without salt (standard 2%), dough ferments too rapidly, turns sticky and slack, and tastes flat and insipid.",
     },
+    {
+        "category": "bakers_math",
+        "questions": [
+            "How do I scale a sourdough recipe to make 2 loaves?",
+            "What are the ingredient weights for a 2-loaf sourdough bake?",
+            "How to double a sourdough recipe?",
+            "Ingredients for two sourdough loaves?",
+            "Formula for two loaves of sourdough bread?",
+        ],
+        "answer": "For 2 standard loaves, use 1000g flour (100%), 720g water (72%), 200g active starter (20%), and 20g salt (2%). Ferment as one large batch, then divide into two 970g portions before shaping.",
+    },
+    {
+        "category": "bakers_math",
+        "questions": [
+            "How do I calculate true total hydration including starter?",
+            "Does starter water count towards total hydration?",
+            "How to calculate sourdough hydration with 100% levain?",
+            "Formula for true sourdough hydration percentage?",
+            "How does starter affect baker's percentage hydration?",
+        ],
+        "answer": "To calculate true hydration, add half of a 100% starter's weight to recipe water, and half to flour weight. Divide total water by total flour and multiply by 100. For example: 375g water / 550g flour = 68.2% hydration.",
+    },
+
+    # Additional Starter Topics
+    {
+        "category": "starter_health",
+        "questions": [
+            "What is a stiff sourdough starter?",
+            "Why use a 50% or 60% hydration starter?",
+            "How do I convert liquid starter to stiff starter?",
+            "What are the benefits of stiff levain vs 100% hydration?",
+            "What is lievito madre in sourdough baking?",
+        ],
+        "answer": "A stiff starter has 50% to 60% hydration instead of 100%. It favors yeast over lactic acid bacteria, producing a sweeter, less acidic loaf with greater oven spring. Feed 2 parts flour to 1 part water and 1 part seed.",
+    },
+    {
+        "category": "starter_health",
+        "questions": [
+            "How long can I keep sourdough discard in the fridge?",
+            "Can sourdough discard go bad in the refrigerator?",
+            "How should I store sourdough discard?",
+            "Is month-old discard safe to use in recipes?",
+            "How do I know if sourdough discard is spoiled?",
+        ],
+        "answer": "Sourdough discard keeps safely in the refrigerator for up to 1 to 2 months. Pour off any dark hooch before use. As long as there is no mold or pink discoloration, it is safe to use in discard recipes.",
+    },
+    {
+        "category": "starter_health",
+        "questions": [
+            "How do I revive a starter left in the fridge for months?",
+            "My sourdough starter has been neglected in the fridge. Can I save it?",
+            "How to bring a dormant sourdough starter back to life?",
+            "Can an old forgotten starter be revived?",
+            "What are the steps to restore a weak neglected starter?",
+        ],
+        "answer": "Discard down to 10g from the center of the jar and feed at a 1:2:2 ratio with 50% whole rye flour and warm water. Repeat feeds every 12 hours at 78°F (26°C) until it doubles reliably within 4 to 6 hours.",
+    },
+    {
+        "category": "starter_health",
+        "questions": [
+            "Can I use tap water for my sourdough starter?",
+            "Does chlorinated water kill sourdough yeast?",
+            "Why is my starter sluggish when using tap water?",
+            "What kind of water is best for sourdough?",
+            "Should I boil or filter tap water for sourdough?",
+        ],
+        "answer": "Chlorine and chloramine in municipal tap water inhibit wild yeast and bacteria. Use filtered, spring, or boiled-and-cooled water. If using tap water, let it sit uncovered for 24 hours to let chlorine dissipate.",
+    },
+    {
+        "category": "starter_health",
+        "questions": [
+            "What is the best flour for feeding a sourdough starter?",
+            "Can I feed my starter with all-purpose flour?",
+            "Why is whole rye flour good for starter health?",
+            "Should I use bleached flour for sourdough starter?",
+            "Can I switch flours when feeding my starter?",
+        ],
+        "answer": "Whole rye or unbleached whole wheat flour is best for starters because whole grains contain abundant wild yeast and micro-nutrients. Never use bleached flour, which lacks living microbes.",
+    },
+
+    # Additional Bulk Fermentation Topics
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "What is an aliquot jar in sourdough baking?",
+            "How do I measure dough rise percentage accurately?",
+            "How to use a sample jar to track bulk fermentation?",
+            "Why use a small shot glass to monitor sourdough rise?",
+            "How can I tell if dough rose 50 percent during bulk?",
+        ],
+        "answer": "An aliquot jar is a small straight-sided container with a 30g dough sample taken right after mixing. Use a rubber band to mark the starting level to track exact rise percentage without guessing.",
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "What is the difference between coil folds and stretch and folds?",
+            "When should I use coil folds instead of stretch and folds?",
+            "How do I perform a coil fold on sourdough?",
+            "Why are coil folds better for high hydration sourdough?",
+            "Are coil folds gentler than stretch and folds?",
+        ],
+        "answer": "Stretch and folds build early strength by pulling dough up and over. Coil folds are gentler, lifting the dough from the center until it releases and rolls under, preserving delicate bubbles in wet dough.",
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "Why does sourdough dough break down and become sticky if proofed too long?",
+            "How does acid weaken gluten in sourdough?",
+            "Why is my dough tearing after a long warm rise?",
+            "Can sourdough ferment so long that gluten dissolves?",
+            "What causes sourdough to turn into paste or soup?",
+        ],
+        "answer": "Extended fermentation drops dough pH below 4.0, activating enzymes that dissolve gluten proteins. Once degraded, the dough turns soupy and sticky, tearing easily and failing to hold any shape.",
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "How much should sourdough rise at 80 degrees vs 70 degrees?",
+            "Why do warmer doughs need less volume rise during bulk?",
+            "Should dough double in bulk fermentation?",
+            "What percentage rise should I aim for at 78F?",
+            "Why shouldn't dough double at warm temperatures?",
+        ],
+        "answer": "At warm room temperatures (78°F to 82°F / 26°C to 28°C), end bulk at 30% to 50% rise because fermentation continues rapidly during shaping. At cool room temperatures (68°F / 20°C), allow a 75% to 100% rise.",
+    },
+
+    # Additional Hydration & Shaping Topics
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "What is the difference between autolyse and fermentolyse?",
+            "Should I include starter in my autolyse?",
+            "When should I fermentolyse instead of autolyse?",
+            "Does fermentolyse save time in sourdough baking?",
+            "Why do some bakers add starter with flour and water?",
+        ],
+        "answer": "Autolyse mixes only flour and water to hydrate gluten without fermentation. Fermentolyse mixes flour, water, and starter together immediately, building gluten while kickstarting fermentation to save time.",
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "Can I make sourdough with all-purpose flour?",
+            "What protein percentage is needed for sourdough bread?",
+            "What is the difference between all-purpose and bread flour for sourdough?",
+            "Why does bread flour hold more water than AP flour?",
+            "Does high protein flour give a better sourdough rise?",
+        ],
+        "answer": "Bread flour has 12.5% to 14% protein, building strong gluten for high hydration and open crumbs. All-purpose flour has 10% to 11.5% protein, so lower hydration to 65% to prevent slack dough.",
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How much water do I add when using whole wheat flour in sourdough?",
+            "Why does whole wheat absorb more water than white flour?",
+            "How to adjust hydration for rye flour sourdough?",
+            "My whole grain sourdough dough is dry and stiff.",
+            "Adding extra water for whole grain sourdough.",
+        ],
+        "answer": "Whole grains contain bran and germ that absorb significantly more water than white flour. Increase total dough hydration by 5% to 10% whenever whole wheat, rye, or spelt exceeds 20% of your flour blend.",
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How do I shape an oval batard sourdough loaf?",
+            "What is the difference between shaping a boule and a batard?",
+            "How do you shape a sourdough boule round?",
+            "Techniques for shaping an oval sourdough loaf?",
+            "How to do envelope folding and stitching for sourdough?",
+        ],
+        "answer": "To shape a boule, cup hands around dough and pull towards you into a round ball. For a batard, fold sides into an envelope, roll down into a tight cylinder, and stitch the bottom seam for tension.",
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "When do I add cheese and jalapeño to sourdough dough?",
+            "How do you add inclusions to sourdough without tearing gluten?",
+            "When should seeds and nuts be added to sourdough?",
+            "How much inclusions can I add to sourdough bread?",
+            "Best method for adding inclusions to sourdough?",
+        ],
+        "answer": "Fold inclusions (up to 20% of flour weight) into dough during lamination or the second coil fold. Distribute evenly across the stretched surface and roll up so ingredients stay enclosed without tearing outer dough.",
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "Can I bake sourdough in a regular loaf pan?",
+            "How to make sandwich bread with sourdough in a tin?",
+            "How do I shape sourdough for a Pullman loaf pan?",
+            "Can sourdough be baked in a 9x5 loaf tin?",
+            "How to get a soft crust on sourdough sandwich loaf?",
+        ],
+        "answer": "Shape dough into a cylinder and place in a greased 8.5x4.5 loaf pan. Proof until dough crowns 1 inch above the rim, then bake at 375°F (190°C) for 35 to 40 minutes for soft sandwich slices.",
+    },
+
+    # Additional Scoring & Baking Topics
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "How do I bake sourdough without a Dutch oven?",
+            "How to create steam in a home oven for bread baking?",
+            "Can I use lava rocks and a cast iron pan for steam?",
+            "How to open bake sourdough loaves on a pizza stone?",
+            "Best way to bake sourdough without a combo cooker?",
+        ],
+        "answer": "Preheat a baking steel on the middle rack and a cast iron pan with lava rocks on the bottom. Load the loaf onto the steel, pour 1 cup of boiling water over the rocks, and bake 20 minutes before venting.",
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "Should I put ice cubes in my Dutch oven when baking sourdough?",
+            "Why add an ice cube under parchment in Dutch oven?",
+            "Does ice create more steam for sourdough ear?",
+            "How many ice cubes to put in Dutch oven?",
+            "Can ice cubes crack a Dutch oven?",
+        ],
+        "answer": "Dropping 1 to 2 ice cubes under the parchment paper inside a hot Dutch oven provides an instant blast of steam, keeping the crust soft longer for maximum oven spring and blisters.",
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "How do I get micro-blisters on my sourdough crust?",
+            "What causes little bubbles and blisters on sourdough crust?",
+            "Why does my bread have tiny blisters all over?",
+            "How to create blistered sourdough crust?",
+            "Are crust blisters a sign of good sourdough fermentation?",
+        ],
+        "answer": "Micro-blisters are tiny bubbles of carbon dioxide trapped under the skin and gelatinized by steam. They require a 12 to 24 hour cold retard in the refrigerator and abundant steam during the initial bake.",
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "How should I store freshly baked sourdough bread?",
+            "Can I keep sourdough in a plastic bag?",
+            "Why does plastic make sourdough crust soft?",
+            "How to store sourdough so crust stays crunchy?",
+            "Can I freeze sourdough bread?",
+        ],
+        "answer": "Store baked sourdough cut-side down on a cutting board or in a paper bag or bread box. Avoid sealed plastic bags, which turn the crust rubbery. Freeze pre-sliced bread in airtight bags for months.",
+    },
+
+    # 6. Guardrails / Out-of-Domain Refusals
+    {
+        "category": "guardrails",
+        "questions": [
+            "What is the capital of France?",
+            "Can you write Python code to sort a list?",
+            "How do I fix a flat tire on my bicycle?",
+            "Who won the soccer World Cup?",
+            "Tell me a joke about robots.",
+            "What is the distance from the earth to the moon?",
+            "How do I change the oil in my car?",
+            "Can you write a poem about autumn?",
+            "What is the best way to invest in stocks?",
+            "How do I install Linux on my computer?",
+            "What is the weather outside today?",
+            "Translate this sentence into Spanish.",
+            "Can you help me with my math homework?",
+            "Who was the first president of the United States?",
+            "What is the meaning of life?",
+        ],
+        "answer": "I am a dedicated sourdough baking assistant. I only answer questions about sourdough starters, fermentation, dough handling, shaping, scoring, and baking.",
+    },
 ]
+

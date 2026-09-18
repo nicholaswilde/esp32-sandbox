@@ -26,7 +26,7 @@ def generate_response(model, tokenizer, prompt: str, max_new_tokens: int = 60, t
     model.eval()
     device = next(model.parameters()).device
 
-    formatted_input = f"User: {prompt}\nAssistant: "
+    formatted_input = f"<|endoftext|>User: {prompt.strip()}\nAssistant:"
     input_ids = tokenizer.encode(formatted_input).ids
     x = torch.tensor([input_ids], dtype=torch.long, device=device)
 

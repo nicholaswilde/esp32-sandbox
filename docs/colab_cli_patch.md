@@ -85,6 +85,12 @@ self._kernel_client = _kernel_client_cls(
 )
 ```
 
+### 3. Patch `colab_cli/common.py` (Proxy Token Expiry)
+
+In long-running jobs (> 1 hour), Google Colab's `colab-runtime-proxy-token` (TTL 3600s) expires. Without updating `s.token` and `s.url` from `client.list_assignments()`, `colab download` commands fail with HTTP 404.
+
+In `<site-packages>/colab_cli/common.py`, `sync_sessions()` and `resolve_session()` are patched to automatically sync and refresh expired tokens from active server assignments.
+
 ---
 
 ## Verification
