@@ -1,9 +1,18 @@
 // PLE TinyLM inference on the ESP32-S3.
 //
-// The model lives in a flash 'model' partition (subtype 0x40), memory-mapped.
-// Weights are staged int8 in PSRAM; scratch buffers are in SRAM.
-// Based on slvDev/esp32-ai firmware/esp32_tinystories/esp32_tinystories.ino
-// adapted for PlatformIO (Arduino framework, no display).
+// The 28.9M-param model (14.9MB, 4-bit) lives in a flash 'model' partition,
+// memory-mapped. Placement follows reads-per-token rather than what happens to fit:
+//
+//   flash   PLE table + token embedding   one row of the 25.2M-parameter
+//                                         table per token
+//   PSRAM   staged int8 core + head, KV   read once per position
+//   SRAM    scratch + norm vectors        touched many times per token
+//
+// The logits array stays in PSRAM: 25,353 floats is 99 KiB, and the argmax
+// reads it once per token.
+//
+// Same llm.h that is verified against PyTorch on the host; only the platform
+// hooks differ here.
 
 #include <Arduino.h>
 #include "esp_partition.h"
@@ -11,25 +20,36 @@
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
 
-// int8 activations, required by the staged int8 kernel.
+// int8 activations, required by the staged int8 kernel. Not bit-exact against
+// the fp32 golden; verify.c must be built without this flag. Validation CE cost
+// (runtime/host_verify/ppl.c, 32,768 predictions): 2.4793 -> 2.4796, ppl 11.93 / 11.94.
 #define LLM_INT8_ACT 1
 #define LLM_PROFILE 1
 #define LLM_PROFILE_NOW() esp_timer_get_time()
 #include "llm.h"
 #include "generated/vocab.h"
 
-// No display wired up.
+// Set to 1 once a display is wired up - see display.h.
+// Leave 0 to run serial-only (no panel needed).
 #define USE_DISPLAY 0
+#if USE_DISPLAY
+#include "display.h"
+#endif
 
-static const int PROMPT_IDS[] = {1, 9038, 2501, 263, 931}; // <s> Once upon a time
+static const int PROMPT_IDS[] = {433, 447, 259, 405}; // "Once upon a time"
 static const int N_GENERATE = 200;
 
 Model model;
 Scratch s;
 
 // ---- allocation ------------------------------------------------------------
+// Allocations are strict because memory placement is part of the runtime
+// configuration. Allocation failure stops initialization.
 static size_t psram_used = 0, sram_used = 0;
 
+// The two LLM_Q8_MAX_INPUT int8 activation buffers (matvec_q8, matvec_par),
+// which are static and so absent from the totals above. Together these report
+// the managed static footprint against the ~327 KB budget.
 #define STATIC_SRAM_BYTES (2 * LLM_Q8_MAX_INPUT)
 
 static void *ps(size_t n) {
@@ -58,6 +78,8 @@ static void *sram_or_die(size_t n, const char *what) {
 }
 
 // ---- dual-core int8 matvec -------------------------------------------------
+// Serves both hooks. Below ~128 rows the task notify round trip costs more than
+// the split saves, so small tensors run single-core.
 static TaskHandle_t worker_h, main_h;
 static const QT *job_t;
 static const int8_t *job_xq;
@@ -77,7 +99,7 @@ static void matvec_par(const QT *t, const float *x, float *y) {
   static int8_t xq[LLM_Q8_MAX_INPUT];
   float xs;
   if (t->w8 == NULL || t->rows < 128) { MATVEC(t, x, y); return; }
-  quantize_act(x, t->cols, xq, &xs);
+  quantize_act(x, t->cols, xq, &xs);   // once; both cores read the result
   job_t = t; job_xq = xq; job_xs = xs; job_y = y; job_split = t->rows / 2;
   xTaskNotifyGive(worker_h);
   matvec_i8_range(t, xq, xs, y, job_split, t->rows);
@@ -87,13 +109,15 @@ static void matvec_par(const QT *t, const float *x, float *y) {
 // Copy RMSNorm weights from mapped flash to internal SRAM.
 static void copy_norms_to_sram() {
   Cfg *c = &model.c;
-  int D = c->dim, L = c->n_layers;
+  int D = c->dim, L = c->n_layers, P = c->ple_dim;
   const float **vecs[3 * 32 + 2];
   int sizes[3 * 32 + 2], n_vec = 0;
-    for (int l = 0; l < L; l++) {
+  vecs[n_vec] = &model.ple_proj_norm; sizes[n_vec++] = P;
+  for (int l = 0; l < L; l++) {
     vecs[n_vec] = &model.attn_norm[l]; sizes[n_vec++] = D;
     vecs[n_vec] = &model.ffn_norm[l];  sizes[n_vec++] = D;
-      }
+    vecs[n_vec] = &model.ple_norm[l];  sizes[n_vec++] = D;
+  }
   vecs[n_vec] = &model.out_norm; sizes[n_vec++] = D;
   for (int i = 0; i < n_vec; i++) {
     size_t bytes = (size_t)sizes[i] * sizeof(float);
@@ -106,121 +130,46 @@ static void copy_norms_to_sram() {
 
 static void alloc_scratch() {
   Cfg *c = &model.c;
-  int D = c->dim, L = c->n_layers, F = c->ffn, S = c->seq_len;
+  int D = c->dim, L = c->n_layers, P = c->ple_dim, F = c->ffn, S = c->seq_len;
   // hot working set -> internal SRAM
   s.x     = (float *)sram_or_die(D * 4, "x");
   s.h     = (float *)sram_or_die((F > D ? F : D) * 4, "h");
   s.qkv   = (float *)sram_or_die(3 * D * 4, "qkv");
   s.att   = (float *)sram_or_die(D * 4, "att");
   s.g1    = (float *)sram_or_die(F * 4, "g1");
-  s.g2    = (float *)sram_or_die(F * 4, "g2");
-    s.tmpP  = (float *)sram_or_die(D * 4, "tmpP");
-    s.scores = (float *)sram_or_die(S * 4, "scores");
-  // logits: out_vocab floats (~99 KiB), read once per token -> PSRAM
+  s.g2    = (float *)sram_or_die((P > F ? P : F) * 4, "g2");
+  s.ple   = (float *)sram_or_die(L * P * 4, "ple");
+  s.tmpP  = (float *)sram_or_die(L * P * 4, "tmpP");
+  s.trow  = (float *)sram_or_die(L * P * 4, "trow");
+  s.scores = (float *)sram_or_die(S * 4, "scores");
+  // logits: out_vocab floats, 99 KiB here, read once per token. Left in PSRAM
+  // rather than spend a fifth of internal SRAM on it.
   s.logits = (float *)ps_or_die((size_t)model.out_vocab * 4, "logits");
-  // KV cache: ~1.1 MB, read once per position -> PSRAM
+  // KV cache: 1.1MB, read once per position rather than per matvec.
   s.kcache = (float *)ps_or_die((size_t)L * S * D * 4, "kcache");
   s.vcache = (float *)ps_or_die((size_t)L * S * D * 4, "vcache");
 }
 
 static void blink(uint8_t g) {
-#ifdef RGB_BUILTIN
+#if defined(RGB_BUILTIN)
   neopixelWrite(RGB_BUILTIN, 0, g, g / 3);
+#elif defined(LED_BUILTIN)
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, g > 0 ? HIGH : LOW);
 #endif
 }
 
-
-// ---- sampling --------------------------------------------------------------
-typedef struct {
-  float prob;
-  int index;
-} ProbIndex;
-
-static uint64_t rng_seed = 1337;
-static unsigned int random_u32() {
-  rng_seed ^= rng_seed >> 12;
-  rng_seed ^= rng_seed << 25;
-  rng_seed ^= rng_seed >> 27;
-  return (rng_seed * 0x2545F4914F6CDD1Dull) >> 32;
-}
-static float random_f32() {
-  return (random_u32() >> 8) / 16777216.0f;
-}
-
-static int compare_probindex(const void* a, const void* b) {
-  ProbIndex* a_ = (ProbIndex*) a;
-  ProbIndex* b_ = (ProbIndex*) b;
-  if (a_->prob > b_->prob) return -1;
-  if (a_->prob < b_->prob) return 1;
-  return 0;
-}
-
-static int sample(float* logits, int n, float temperature, float topp, ProbIndex* probindex) {
-  if (temperature == 0.0f) {
-    int best = 0; float best_val = -1e30f;
-    for (int i = 0; i < n; i++) {
-      if (logits[i] > best_val) { best_val = logits[i]; best = i; }
-    }
-    return best;
-  }
-
-  // Softmax
-  float max_val = -1e30f;
-  for (int i = 0; i < n; i++) {
-    if (logits[i] > max_val) max_val = logits[i];
-  }
-  float sum = 0.0f;
-  for (int i = 0; i < n; i++) {
-    logits[i] = expf((logits[i] - max_val) / temperature);
-    sum += logits[i];
-  }
-  for (int i = 0; i < n; i++) {
-    logits[i] /= sum;
-  }
-
-  // Top-p or standard temperature sampling
-  if (topp <= 0.0f || topp >= 1.0f) {
-    float r = random_f32();
-    float cdf = 0.0f;
-    for (int i = 0; i < n; i++) {
-      cdf += logits[i];
-      if (r < cdf) return i;
-    }
-    return n - 1; // Fallback
-  }
-
-  // Top-p sampling
-  for (int i = 0; i < n; i++) {
-    probindex[i].index = i;
-    probindex[i].prob = logits[i];
-  }
-  qsort(probindex, n, sizeof(ProbIndex), compare_probindex);
-
-  float cumsum = 0.0f;
-  int last_idx = n - 1;
-  for (int i = 0; i < n; i++) {
-    cumsum += probindex[i].prob;
-    if (cumsum >= topp) {
-      last_idx = i;
-      break;
-    }
-  }
-
-  float r = random_f32() * cumsum;
-  float cdf = 0.0f;
-  for (int i = 0; i <= last_idx; i++) {
-    cdf += probindex[i].prob;
-    if (r < cdf) return probindex[i].index;
-  }
-  return probindex[last_idx].index;
-}
-
-// Emit one token to serial output.
+// Emit one token to every active output (serial always; panel when enabled).
 static void emit(int tok) {
   if (tok >= VOCAB_N) return;
   const unsigned char *bytes = VOCAB_BLOB + VOCAB_OFF[tok];
   int len = VOCAB_OFF[tok + 1] - VOCAB_OFF[tok];
+  // Non-blocking: when no host is draining the USB-CDC buffer, skip the write
+  // instead of stalling the whole generation once the TX buffer fills.
   if ((int)Serial.availableForWrite() >= len) Serial.write(bytes, len);
+#if USE_DISPLAY
+  display_puts(bytes, len);
+#endif
 }
 
 void setup() {
@@ -228,34 +177,42 @@ void setup() {
   delay(1500);
   Serial.println("\n=== ESP32-S3 PLE TinyLM ===");
 
-  // Memory-map the model partition (subtype 0x40, name "model").
   const esp_partition_t *part = esp_partition_find_first(
       ESP_PARTITION_TYPE_DATA, (esp_partition_subtype_t)0x40, "model");
-  if (!part) { Serial.println("model partition not found"); return; }
-  const void *base;
-  spi_flash_mmap_handle_t h;
-  esp_err_t err = esp_partition_mmap(part, 0, part->size,
-                                     SPI_FLASH_MMAP_DATA, &base, &h);
-  if (err != ESP_OK) { Serial.printf("mmap failed: %d\n", err); return; }
+  if (!part) {
+    Serial.println("FATAL: 'model' partition not found");
+    while (1) delay(1000);
+  }
 
-  int llm_err = llm_load((const uint8_t *)base, &model);
-  if (llm_err) {
-    uint32_t m;
-    memcpy(&m, base, 4);
-    Serial.printf("bad model magic, err %d, read %x\n", llm_err, m);
-    Serial.println("bad model magic");
-    return;
+  const void *base = NULL;
+  spi_flash_mmap_handle_t map_h;
+  esp_err_t err = esp_partition_mmap(part, 0, part->size,
+                                     SPI_FLASH_MMAP_DATA, &base, &map_h);
+  if (err != ESP_OK) {
+    Serial.printf("FATAL: mmap failed: %d\n", err);
+    while (1) delay(1000);
+  }
+
+  if (llm_load((const uint8_t *)base, &model)) {
+    Serial.println("FATAL: bad model magic");
+    while (1) delay(1000);
   }
   Cfg *c = &model.c;
-  Serial.printf("model: Vin=%d Vout=%d D=%d L=%d H=%d F=%d P=%d  (mapped %.1f MB)\\n",
+  Serial.printf("model: Vin=%d Vout=%d D=%d L=%d H=%d F=%d P=%d  (mapped %.1f MB)\n",
                 c->vocab, model.out_vocab, c->dim, c->n_layers, c->n_heads,
-                c->ffn, c->group, part->size / 1e6);
+                c->ffn, c->ple_dim, part->size / 1e6);
 
-  // Sanity-check vocab table vs model header.
+#if USE_DISPLAY
+  display_begin();
+#endif
+
+  // The model header states how many logits it produces; vocab.h carries the
+  // decode table. If they disagree, every emitted token would be decoded
+  // against the wrong table.
   if (VOCAB_N != model.out_vocab) {
     Serial.printf("FATAL: tokenizer/model mismatch: vocab.h %d, model %d\n",
                   VOCAB_N, model.out_vocab);
-    return;
+    while (1) delay(1000);
   }
 
   alloc_scratch();
@@ -266,31 +223,32 @@ void setup() {
 
   // Stage every per-position tensor to int8 in PSRAM.
   int want = llm_core_stage_count(&model);
-  int staged = 0; if (model.c.group == 0) { staged = llm_stage_core_int8_alloc(&model, ps); } else { Serial.println("Skipping PSRAM staging for INT4 model"); }
-  if (model.c.group == 0 && staged != want) {
+  int staged = llm_stage_core_int8_alloc(&model, ps);
+  if (staged != want) {
     Serial.printf("FATAL: staged %d/%d core tensors\n", staged, want);
     while (1) delay(1000);
   }
-  // Stage the tied output head too (85% of dense MACs).
+  // The tied head is read per token, not per position, so the core helper does
+  // not walk it. Stage it too: it is 85% of the dense MACs.
   {
-    void *b = heap_caps_malloc(llm_stage_int8_bytes(&model.out_head), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    if (b) {
-      llm_stage_int8(&model.out_head, b);
-      ++staged;
-    }
+    void *b = ps_or_die(llm_stage_int8_bytes(&model.out_head), "staged head");
+    llm_stage_int8(&model.out_head, b);
+    ++staged;
   }
-  Serial.printf("weights-> PSRAM  %d tensors int8, %.2f MB allocated (out_head %d x %d)\\n",
-                staged, psram_used / 1048576.0, model.out_head.rows, model.out_head.cols);
+  Serial.printf("weights-> PSRAM  %d tensors int8, %.2f MB allocated\n",
+                staged, psram_used / 1048576.0);
 
   main_h = xTaskGetCurrentTaskHandle();
   if (xTaskCreatePinnedToCore(worker_main, "mv", 4096, NULL, 2, &worker_h, 0) == pdPASS) {
+    // After the worker exists: matvec_par notifies worker_h.
     model.layer_matvec = matvec_par;
     model.head_matvec  = matvec_par;
   } else {
     Serial.println("dual-core worker failed; running single core");
   }
 
-  // FNV-1a fingerprint of the model image.
+  // FNV-1a over the mapped image. scripts/deploy.sh prints the same value for
+  // the file it flashed; the two must agree.
   {
     const uint8_t *img = (const uint8_t *)base;
     uint32_t fp = 2166136261u;
@@ -311,23 +269,21 @@ void setup() {
   int64_t decode_us = 0;
   int decoded = 0;
 
-  for (int i = 0; i < n_prompt; i++) {   // prime with the prompt
+  for (int i = 0; i < n_prompt; i++) {  // prime with the prompt
     tok = PROMPT_IDS[i];
     emit(tok);
     llm_forward(&model, tok, pos++, &s);
   }
 
-  Serial.println(""); llm_profile_reset(&s);
-
-  ProbIndex* probindex = (ProbIndex*)ps_or_die(model.out_vocab * sizeof(ProbIndex), "probindex");
+  llm_profile_reset(&s);
 
   int64_t t_start = esp_timer_get_time();
   for (int step = 0; step < N_GENERATE && pos < model.c.seq_len; step++) {
-    float temperature = 0.9f;
-    float top_p = 0.9f;
-    tok = sample(s.logits, model.out_vocab, temperature, top_p, probindex);
+    int best = 0; float bv = -1e30f;
+    for (int v = 0; v < model.out_vocab; v++)
+      if (s.logits[v] > bv) { bv = s.logits[v]; best = v; }
+    tok = best;
     emit(tok);
-    if (tok == 2) break;
     blink((step & 1) ? 40 : 8);
 
     int64_t d0 = esp_timer_get_time();
@@ -348,6 +304,9 @@ void setup() {
                   s.profile.ffn_us / n, s.profile.ple_us / n,
                   s.profile.head_us / n);
   }
+#if USE_DISPLAY
+  display_stats(decoded * 1e6f / decode_us, decode_us / 1000.0f / decoded);
+#endif
   blink(0);
 }
 

@@ -188,11 +188,6 @@ class TinyLM(nn.Module):
             self.head = nn.Linear(cfg.d_model, out_vocab, bias=False)
             if cfg.head_is_tied:
                 self.head.weight = self.tok_emb.weight  # tied
-        
-        # Issue #4 (SIMD/Sub-Vocab): Hierarchical Softmax Cluster Predictor
-        # Predicts which 1000-word cluster the next token belongs to.
-        num_clusters = (out_vocab + 999) // 1000
-        self.cluster_head = nn.Linear(cfg.d_model, num_clusters, bias=False)
 
         if cfg.uses_per_layer:
             # Context-aware half of the per-layer input: one projection of the
@@ -255,33 +250,15 @@ class TinyLM(nn.Module):
 
         x = self.out_norm(x)
         logits = self.head(x)
-        
-        # Sub-vocabulary prediction (Issue #4)
-        cluster_logits = self.cluster_head(x)
-        
         loss = None
         if targets is not None:
-            # 1. Exact Vocabulary Loss
-            vocab_loss = F.cross_entropy(
+            # Reshape by the head's own width, not the read vocabulary. The
+            # two differ whenever the output width differs from vocab_size.
+            loss = F.cross_entropy(
                 logits.reshape(-1, cfg.resolved_out_vocab_size),
                 targets.reshape(-1),
                 ignore_index=-1,
             )
-            
-            # 2. Cluster Target (which 1000-word bucket)
-            cluster_targets = (targets // 1000).clamp(min=0)
-            cluster_targets[targets == -1] = -1  # Preserve ignore_index padding
-            
-            # 3. Cluster Loss
-            cluster_loss = F.cross_entropy(
-                cluster_logits.reshape(-1, cluster_logits.size(-1)),
-                cluster_targets.reshape(-1),
-                ignore_index=-1,
-            )
-            
-            # 4. Total Loss
-            loss = vocab_loss + cluster_loss
-            
         return logits, loss
 
     # ---- parameter accounting -------------------------------------------------
@@ -359,12 +336,9 @@ def make_model(arm, target_core, base: Config = None, verbose=True, fixed_ffn=No
         model = TinyLM(cfg)
         if verbose:
             b = model.param_budget()
-            try:
-                print(f"[{arm}] d_model={cfg.d_model} layers={cfg.n_layers} "
-                      f"ffn={cfg.ffn_hidden} ple_dim={cfg.ple_dim} core={b['core']:,} "
-                      f"stream={b['stream']:,} table={b['table']:,} total={b['total']:,}")
-            except BrokenPipeError:
-                pass
+            print(f"[{arm}] d_model={cfg.d_model} layers={cfg.n_layers} "
+                  f"ffn={cfg.ffn_hidden} ple_dim={cfg.ple_dim} core={b['core']:,} "
+                  f"stream={b['stream']:,} table={b['table']:,} total={b['total']:,}")
         return model
     table_budget = cfg.vocab_size * cfg.n_layers * cfg.ple_dim
     if arm == "bigcore":
@@ -392,12 +366,9 @@ def make_model(arm, target_core, base: Config = None, verbose=True, fixed_ffn=No
     model = TinyLM(cfg)
     if verbose:
         b = model.param_budget()
-        try:
-            print(
-                f"[{arm}] d_model={cfg.d_model} layers={cfg.n_layers} ffn={cfg.ffn_hidden} "
-                f"core={b['core']:,} stream={b['stream']:,} table={b['table']:,} "
-                f"total={b['total']:,}"
-            )
-        except BrokenPipeError:
-            pass
+        print(
+            f"[{arm}] d_model={cfg.d_model} layers={cfg.n_layers} ffn={cfg.ffn_hidden} "
+            f"core={b['core']:,} stream={b['stream']:,} table={b['table']:,} "
+            f"total={b['total']:,}"
+        )
     return model

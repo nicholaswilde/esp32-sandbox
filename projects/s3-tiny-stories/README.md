@@ -123,7 +123,7 @@ task monitor
 
 ## :brain: Training a Custom Model
 
-You can train custom models with Hierarchical Softmax (cluster prediction head) directly in the `research/` pipeline and export them for on-device inference.
+You can train custom PLE TinyLM models directly in the `research/` pipeline and export them for on-device inference matching the `esp32-ai` architecture.
 
 ### 1. Environment & Dependencies
 Ensure Python dependencies are synced via `uv`:

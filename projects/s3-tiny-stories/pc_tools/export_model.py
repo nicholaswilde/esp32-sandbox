@@ -1,273 +1,205 @@
 #!/usr/bin/env python3
-"""
-Export karpathy/tinyllamas stories15M to llama2.c v1 binary format.
+"""Export trained TinyStories PLE model to INT4 packed binary format for ESP32-S3.
 
-karpathy/tinyllamas on HuggingFace stores NATIVE llama2.c .pt checkpoints,
-NOT HuggingFace-format models. We download stories15M.pt directly and load
-it with torch.load(). No HF rotary permutation needed.
-
-Binary layout (v1):
-  [0..3]   magic   = 0x616b3432  ("ak42")
-  [4..7]   version = 1
-  [8..11]  dim
-  [12..15] hidden_dim
-  [16..19] n_layers
-  [20..23] n_heads
-  [24..27] n_kv_heads
-  [28..31] vocab_size
-  [32..35] seq_len
-  [36]     shared_classifier (uint8)
-  [37..40] group_size (int32, 0 = fp32)
-  [41..255] zero padding
-  [256..]  FP32 weights in order:
-             token_embedding_table, rms_att_weight,
-             wq, wk, wv, wo,
-             rms_ffn_weight, w1, w2, w3,
-             rms_final_weight, [wcls if not shared]
+Outputs:
+  - pc_tools/model.bin (Packed INT4 weights + FP16 scales with PLE header)
+  - pc_tools/golden.txt (Golden prompt logits for C/C++ verification)
 """
 
+import argparse
+import hashlib
 import os
+import shutil
 import struct
 import sys
+from pathlib import Path
 
 import numpy as np
 import torch
-from huggingface_hub import hf_hub_download
+from tokenizers import Tokenizer
 
-HEADER_SIZE = 256
-MAGIC = 0x616B3432
-VERSION = 1
+# Add project directory to sys.path to import research.model
+PROJECT_DIR = Path(__file__).resolve().parents[1]
+if str(PROJECT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR))
 
-# stories15M config (from karpathy/llama2.c params)
-DIM = 288
-HIDDEN_DIM = 768
-N_LAYERS = 6
-N_HEADS = 6
-N_KV_HEADS = 6
-VOCAB_SIZE = 32000
-SEQ_LEN = 256
-SHARED_CLASSIFIER = True
-GROUP_SIZE = 64  # 64 = INT4
+from research.model import Config, TinyLM
 
-
-def serialize(f, tensor: torch.Tensor) -> int:
-    """Write tensor as FP32 little-endian bytes, return byte count."""
-    data = tensor.detach().float().cpu().contiguous().numpy().astype(np.float32)
-    f.write(data.tobytes())
-    return data.nbytes
+MAGIC = 0x00454C50  # "PLE\0"
+FORMAT_VERSION = 1
+HEADER_BYTES = 56
+FLAG_TIED_HEAD = 1 << 0
+GROUP_DEFAULT = 128
+PROMPT = "Once upon a time"
 
 
+def quant_pack(w: torch.Tensor, group: int = GROUP_DEFAULT):
+    """Group-wise symmetric int4, ragged (no padding) with fp16 scales.
 
+    Returns (packed_uint8, scales_fp16, dequantized_fp32).
+    """
+    w = w.float()
+    out_shape = w.shape
+    x = w.reshape(-1, out_shape[-1])
+    rows, cols = x.shape
+    n_groups = (cols + group - 1) // group
+    q = torch.zeros(rows, cols)
+    dq = torch.zeros(rows, cols)
+    scales = torch.zeros(rows, n_groups)
 
-def quantize_q4(tensor: torch.Tensor, group_size: int):
-    # Flatten all dimensions except the last one
-    cols = tensor.size(-1)
-    tensor = tensor.view(-1, cols)
-    rows = tensor.size(0)
-    n_groups = (cols + group_size - 1) // group_size
+    for gi in range(n_groups):
+        a, b = gi * group, min((gi + 1) * group, cols)
+        seg = x[:, a:b]
+        sc = (seg.abs().amax(dim=1, keepdim=True) / 7.0).clamp_min(1e-8)
+        sc = sc.half().float()  # Round scale to IEEE fp16
+        scales[:, gi] = sc.squeeze(1)
+        qi = torch.clamp(torch.round(seg / sc), -7, 7)
+        q[:, a:b] = qi
+        dq[:, a:b] = qi * sc
+    dq = dq.reshape(out_shape)
+
+    codes = (q.to(torch.int16) + 8).to(torch.uint8).numpy()
     row_bytes = (cols + 1) // 2
-    
-    # Pad to multiple of group_size
-    pad_len = (n_groups * group_size) - cols
-    if pad_len > 0:
-        tensor = torch.nn.functional.pad(tensor, (0, pad_len))
-        
-    # Reshape to [rows, n_groups, group_size]
-    w = tensor.view(rows, n_groups, group_size).detach().cpu().numpy()
-    
-    # Calculate amax and scales
-    amax = np.max(np.abs(w), axis=2)  # [rows, n_groups]
-    scales = np.where(amax > 1e-8, amax / 7.0, 0.0).astype(np.float16)
-    
-    # Quantize
-    inv_scales = np.where(scales > 0, 1.0 / scales, 0.0)
-    q = np.round(w * inv_scales[:, :, np.newaxis])
-    q = np.clip(q, -8, 7).astype(np.int8)
-    q_packed = q + 8  # 0 to 15
-    
-    # Flatten back to [rows, cols] (handling padding if we want, but we just take cols)
-    q_packed = q_packed.reshape(rows, -1)[:, :cols].astype(np.uint8)
-    
-    # Pack nibbles
-    # Even indices go to lower nibble, odd indices go to upper nibble
-    q_even = q_packed[:, 0::2]
-    q_odd = q_packed[:, 1::2]
-    
-    codes = np.zeros((rows, row_bytes), dtype=np.uint8)
-    codes[:, :q_even.shape[1]] |= (q_even & 0xF)
-    codes[:, :q_odd.shape[1]] |= ((q_odd & 0xF) << 4)
-    
-    return codes, scales
+    packed = np.zeros((rows, row_bytes), dtype=np.uint8)
+    lo = codes[:, 0::2]
+    hi = codes[:, 1::2]
+    packed[:, : lo.shape[1]] = lo
+    packed[:, : hi.shape[1]] |= (hi << 4)
+    scales16 = scales.numpy().astype(np.float16)
+    return packed.reshape(-1), scales16.reshape(-1), dq
 
-def serialize_q4(f, tensor: torch.Tensor, group_size: int) -> int:
-    codes, scales = quantize_q4(tensor, group_size)
-    f.write(codes.tobytes())
-    f.write(scales.tobytes())
-    return codes.nbytes + scales.nbytes
 
-def write_header(f):
-    header = struct.pack(
-        "<IiiiiiiiiBi",
-        MAGIC,
-        VERSION,
-        DIM,
-        HIDDEN_DIM,
-        N_LAYERS,
-        N_HEADS,
-        N_KV_HEADS,
-        VOCAB_SIZE,
-        SEQ_LEN,
-        int(SHARED_CLASSIFIER),
-        GROUP_SIZE,
+def main():
+    parser = argparse.ArgumentParser(description="Export TinyStories PLE checkpoint to INT4 binary.")
+    parser.add_argument(
+        "--ckpt",
+        type=Path,
+        default=PROJECT_DIR / "runs" / "tinystories" / "ple-model.pt",
+        help="Path to trained checkpoint (.pt)",
     )
-    pad = HEADER_SIZE - len(header)
-    assert pad >= 0, f"Header too large: {len(header)} bytes"
-    header += b"\x00" * pad
-    assert len(header) == HEADER_SIZE
-    f.write(header)
-    print(f"  Header written ({HEADER_SIZE} bytes)")
-
-
-def load_checkpoint(pt_path: str) -> dict:
-    """Load a llama2.c native .pt checkpoint. Returns the state dict."""
-    print(f"  Loading checkpoint from {pt_path} …")
-    checkpoint = torch.load(pt_path, map_location="cpu", weights_only=True)
-    # karpathy/tinyllamas checkpoints are saved as {"model": state_dict, ...}
-    # or directly as a state_dict.
-    if isinstance(checkpoint, dict) and "model" in checkpoint:
-        sd = checkpoint["model"]
-    else:
-        sd = checkpoint
-    print(f"  Loaded {len(sd)} tensors.")
-    return sd
-
-
-def export_model(out_path: str = "stories15M.bin"):
-    # ------------------------------------------------------------------ #
-    # 1. Download the native .pt checkpoint                               #
-    # ------------------------------------------------------------------ #
-    print("Downloading karpathy/tinyllamas (stories15M) from HuggingFace …")
-    pt_path = hf_hub_download(
-        repo_id="karpathy/tinyllamas",
-        filename="stories15M.pt",
-        local_dir=".",
+    parser.add_argument(
+        "--tokenizer",
+        type=Path,
+        default=PROJECT_DIR / "pc_tools" / "tokenizer.json",
+        help="Path to tokenizer.json",
     )
-    print(f"  Downloaded to: {pt_path}")
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=PROJECT_DIR / "pc_tools",
+        help="Destination directory for exported artifacts (default: pc_tools/)",
+    )
+    parser.add_argument(
+        "--out-name",
+        type=str,
+        default="model.bin",
+        help="Output binary filename (default: model.bin)",
+    )
+    parser.add_argument(
+        "--group",
+        type=int,
+        default=GROUP_DEFAULT,
+        help=f"Quantization group size (default: {GROUP_DEFAULT})",
+    )
+    args = parser.parse_args()
 
-    sd = load_checkpoint(pt_path)
+    if not args.ckpt.exists():
+        sys.exit(f"Error: checkpoint {args.ckpt} not found.")
+    if not args.tokenizer.exists():
+        sys.exit(f"Error: tokenizer {args.tokenizer} not found.")
 
-    # Print available keys to help debug if structure ever changes
-    print("  State dict keys (first 10):", list(sd.keys())[:10])
+    args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    # ------------------------------------------------------------------ #
-    # 2. Write binary                                                      #
-    # ------------------------------------------------------------------ #
-    print(f"\nWriting binary to: {out_path}")
-    total_bytes = 0
+    print(f"Loading checkpoint: {args.ckpt.name}")
+    ck = torch.load(args.ckpt, map_location="cpu", weights_only=False)
+    cfg = Config(**ck["cfg"])
 
-    with open(out_path, "wb") as f:
-        write_header(f)
+    if cfg.arm != "ple":
+        sys.exit(f"Error: checkpoint arm={cfg.arm}, expected 'ple'")
 
-        # Native llama2.c state dict key names:
-        #   tok_embeddings.weight         (vocab_size, dim)
-        #   layers.{i}.attention_norm.weight  (dim,)
-        #   layers.{i}.attention.wq.weight    (dim, dim)
-        #   layers.{i}.attention.wk.weight    (dim, dim)
-        #   layers.{i}.attention.wv.weight    (dim, dim)
-        #   layers.{i}.attention.wo.weight    (dim, dim)
-        #   layers.{i}.ffn_norm.weight        (dim,)
-        #   layers.{i}.feed_forward.w1.weight (hidden_dim, dim)
-        #   layers.{i}.feed_forward.w2.weight (dim, hidden_dim)
-        #   layers.{i}.feed_forward.w3.weight (hidden_dim, dim)
-        #   norm.weight                   (dim,)
-        #   output.weight                 (vocab_size, dim)  -- if not shared
+    out_vocab = cfg.resolved_out_vocab_size
+    print(f"input_vocab={cfg.vocab_size} | output_vocab={out_vocab}")
 
-        # 1. token_embedding_table  [vocab_size × dim]
-        print("  Writing token_embedding_table …")
-        total_bytes += serialize_q4(f, sd["tok_embeddings.weight"], GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, sd["tok_embeddings.weight"])
+    model = TinyLM(cfg)
+    model.load_state_dict(ck["state"])
+    model.eval()
 
-        # 2. rms_att_weight  [n_layers × dim]
-        print("  Writing rms_att_weight …")
-        rms_att = torch.stack(
-            [sd[f"layers.{i}.attention_norm.weight"] for i in range(N_LAYERS)]
-        )
-        total_bytes += serialize(f, rms_att)
+    sd = model.state_dict()
+    plan = []
 
-        # 3. wq
-        print("  Writing wq …")
-        for i in range(N_LAYERS):
-            tensor = sd[f"layers.{i}.attention.wq.weight"]
-            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
+    def add_tensor(name: str, quant: bool):
+        plan.append((name, sd[name], quant))
 
-        # 4. wk
-        print("  Writing wk …")
-        for i in range(N_LAYERS):
-            tensor = sd[f"layers.{i}.attention.wk.weight"]
-            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
+    # Strict tensor order matching C runtime
+    add_tensor("tok_emb.weight", True)
+    add_tensor("ple_model_proj.weight", True)
+    add_tensor("ple_proj_norm.weight", False)
+    add_tensor("ple_table.weight", True)
 
-        # 5. wv
-        print("  Writing wv …")
-        for i in range(N_LAYERS):
-            tensor = sd[f"layers.{i}.attention.wv.weight"]
-            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
+    for i in range(cfg.n_layers):
+        p = f"blocks.{i}."
+        add_tensor(p + "attn_norm.weight", False)
+        add_tensor(p + "attn.qkv.weight", True)
+        add_tensor(p + "attn.proj.weight", True)
+        add_tensor(p + "ffn_norm.weight", False)
+        add_tensor(p + "ffn.gate.weight", True)
+        add_tensor(p + "ffn.up.weight", True)
+        add_tensor(p + "ffn.down.weight", True)
+        add_tensor(p + "ple_norm.weight", False)
 
-        # 6. wo
-        print("  Writing wo …")
-        for i in range(N_LAYERS):
-            tensor = sd[f"layers.{i}.attention.wo.weight"]
-            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
+    add_tensor("out_norm.weight", False)
+    if not cfg.head_is_tied:
+        add_tensor("head.weight", True)
 
-        # 7. rms_ffn_weight
-        print("  Writing rms_ffn_weight …")
-        for i in range(N_LAYERS):
-            total_bytes += serialize(f, sd[f"layers.{i}.ffn_norm.weight"])
+    blobs = []
+    dq_dict = {}
+    total_unquant = 0
+    total_packed = 0
 
-        # 8. w1
-        print("  Writing w1 …")
-        for i in range(N_LAYERS):
-            tensor = sd[f"layers.{i}.feed_forward.w1.weight"]
-            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
+    for name, tensor, quant in plan:
+        t = tensor.detach().cpu()
+        if not quant:
+            arr = t.numpy().astype(np.float32)
+            blobs.append(("F", name, t.shape, arr.reshape(-1), None))
+            total_unquant += arr.nbytes
+            dq_dict[name] = t
+        else:
+            packed, scales, dq = quant_pack(t, group=args.group)
+            blobs.append(("Q", name, t.shape, packed, scales))
+            total_packed += len(packed) + scales.nbytes
+            dq_dict[name] = dq
 
-        # 9. w2
-        print("  Writing w2 …")
-        for i in range(N_LAYERS):
-            tensor = sd[f"layers.{i}.feed_forward.w2.weight"]
-            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
+    out_bin = args.out_dir / args.out_name
+    flags = FLAG_TIED_HEAD if cfg.head_is_tied else 0
 
-        # 10. w3
-        print("  Writing w3 …")
-        for i in range(N_LAYERS):
-            tensor = sd[f"layers.{i}.feed_forward.w3.weight"]
-            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
+    with open(out_bin, "wb") as f:
+        # 56-byte header
+        f.write(struct.pack("<IIII", MAGIC, FORMAT_VERSION, HEADER_BYTES, flags))
+        f.write(struct.pack("<II", cfg.vocab_size, out_vocab))
+        for v in [
+            cfg.d_model,
+            cfg.n_layers,
+            cfg.n_heads,
+            cfg.ffn_hidden,
+            cfg.ple_dim,
+            cfg.seq_len,
+            args.group,
+        ]:
+            f.write(struct.pack("<i", v))
+        f.write(struct.pack("<f", cfg.rope_theta))
 
-        # 11. rms_final_weight  [dim]
-        print("  Writing rms_final_weight …")
-        total_bytes += serialize(f, sd["norm.weight"])
+        for entry in blobs:
+            kind, name, shape, data, scales = entry
+            if kind == "F":
+                f.write(data.tobytes())
+            else:
+                f.write(struct.pack("<i", args.group))
+                f.write(data.tobytes())
+                f.write(scales.tobytes())
 
-        # --- HIERARCHICAL SOFTMAX MOCK (Issue #4) ---
-        # Inject a mock cluster_head into the state dict for testing!
-        sd["cluster_head.weight"] = torch.zeros(32, 288)
-        sd["cluster_head.weight"][0, :] = 1.0  # Force it to always pick Cluster 0 (most common words)
-        
-        if "cluster_head.weight" in sd:
-            print("  Writing cluster_head …")
-            tensor = sd["cluster_head.weight"]
-            total_bytes += serialize_q4(f, tensor, GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, tensor)
-        # --------------------------------------------
-
-        # 12. wcls  [vocab_size × dim]  — only if classifier not shared with embeddings
-        if not SHARED_CLASSIFIER:
-            print("  Writing wcls …")
-            total_bytes += serialize_q4(f, sd["output.weight"], GROUP_SIZE) if GROUP_SIZE > 0 else serialize(f, sd["output.weight"])
-
-    file_size = os.path.getsize(out_path)
-    print(f"\nExport complete!")
-    print(f"  File : {out_path}")
-    print(f"  Size : {file_size / 1024 / 1024:.2f} MB  ({file_size:,} bytes)")
-    expected = HEADER_SIZE + total_bytes
-    print(f"  Check: {file_size} == {expected} → {'OK' if file_size == expected else 'MISMATCH'}")
+    bin_size = out_bin.stat().st_size
+    print(f"Exported: {out_bin} ({bin_size / (1024 * 1024):.2f} MB)")
 
 
 if __name__ == "__main__":
-    out = sys.argv[1] if len(sys.argv) > 1 else "stories15M.bin"
-    export_model(out)
+    main()

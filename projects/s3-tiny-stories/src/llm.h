@@ -10,31 +10,29 @@
 // gated per layer as  x += RMSNorm(ple_proj(gelu(ple_gate(x)) * ple_l)).
 #ifndef LLM_H
 #define LLM_H
-#define HIERARCHICAL_SOFTMAX 1
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
 
-#define LLM_MAGIC 0x616B3432u        /* "ak42" */
+#define LLM_MAGIC 0x00454C50u        /* "PLE\0" */
 #define LLM_FORMAT_VERSION 1u
 #define LLM_FLAG_TIED_HEAD 1u        /* head is the token embedding */
 #define LLM_FLAGS_KNOWN LLM_FLAG_TIED_HEAD
-#define LLM_HEADER_BYTES 256u
+#define LLM_HEADER_BYTES 56u         /* version 1 */
 #define LLM_HEADER_MAX 4096u         /* sanity bound on a future header */
 #define LLM_MAX_LAYERS 32            /* fixed per-layer arrays below */
 #define RMS_EPS 1e-6f
 #define LLM_Q8_MAX_INPUT 4096
 
 
-typedef struct __attribute__((packed)) {
-  int vocab, dim, n_layers, n_heads, n_kv_heads, ffn, seq_len, group;
-  int shared_classifier;
+typedef struct {
+  int vocab, dim, n_layers, n_heads, ffn, ple_dim, seq_len, group;
   float rope_theta;
 } Cfg;
 
 // A group-wise int4 tensor viewed in place: ragged packed nibbles (row-aligned
 // to a byte) + fp16 group scales. Per-tensor group. No padding.
-typedef struct __attribute__((packed)) {
+typedef struct {
   const uint8_t  *codes;   // rows*row_bytes, nibble = value+8, row_bytes=ceil(cols/2)
   const uint16_t *scales;  // rows*n_groups fp16
   int rows, cols, group, n_groups, row_bytes;
@@ -64,24 +62,23 @@ static inline float half2float(uint16_t h) {
   float out; memcpy(&out, &f, 4); return out;
 }
 
-typedef struct __attribute__((packed)) {
+typedef struct {
   Cfg c;
-  QT tok_emb;             // [V, D]
-  QT out_head;            // [V, D] (classifier)
-#ifdef HIERARCHICAL_SOFTMAX
-  QT cluster_head;        // [clusters, D]
-#endif
-  int out_vocab;
+  QT tok_emb;             // [V, D]  input embedding
+  QT out_head;            // [Vout, D]; first Vout rows of tok_emb when tied
+  int out_vocab;          // logits produced per step
+  QT ple_model_proj;      // [L*P, D]
+  const float *ple_proj_norm; // [P]
+  QT ple_table;           // [V, L*P]
   const float *attn_norm[LLM_MAX_LAYERS]; // [D]
-  QT wq[LLM_MAX_LAYERS];  // [D, D]
-  QT wk[LLM_MAX_LAYERS];  // [D, D]
-  QT wv[LLM_MAX_LAYERS];  // [D, D]
-  QT wo[LLM_MAX_LAYERS];  // [D, D]
+  QT qkv[LLM_MAX_LAYERS];             // [3D, D]
+  QT attn_proj[LLM_MAX_LAYERS];       // [D, D]
   const float *ffn_norm[LLM_MAX_LAYERS];  // [D]
-  QT w1[LLM_MAX_LAYERS];  // [F, D]
-  QT w2[LLM_MAX_LAYERS];  // [D, F]
-  QT w3[LLM_MAX_LAYERS];  // [F, D]
-  const float *out_norm;  // [D]
+  QT gate[LLM_MAX_LAYERS], up[LLM_MAX_LAYERS], down[LLM_MAX_LAYERS];
+  QT ple_gate[LLM_MAX_LAYERS];        // [P, D]
+  QT ple_proj[LLM_MAX_LAYERS];        // [D, P]
+  const float *ple_norm[LLM_MAX_LAYERS];  // [D]
+  const float *out_norm;      // [D]
   size_t image_bytes;     // bytes consumed by the image, which is smaller than
                           // the flash partition holding it
 
@@ -93,7 +90,8 @@ typedef struct __attribute__((packed)) {
 
 // Advance a cursor over the file, binding one quant tensor. Reads the per-tensor
 // group prefix, then ragged codes + fp16 scales.
-static const uint8_t *bind_q(const uint8_t *p, QT *t, int rows, int cols, int group) {
+static const uint8_t *bind_q(const uint8_t *p, QT *t, int rows, int cols) {
+  int32_t group; memcpy(&group, p, 4); p += 4;
   t->rows = rows; t->cols = cols; t->group = group;
   t->n_groups = (cols + group - 1) / group;
   t->row_bytes = (cols + 1) / 2;
@@ -200,36 +198,10 @@ static inline void matvec_q8_range(const QT *t, const int8_t *xq, float x_scale,
       int begin = gi * t->group, end = begin + t->group;
       if (end > t->cols) end = t->cols;
       int32_t g = 0;                       // group accumulator
-      
-      int j = begin;
-      // Process 8 tokens (4 bytes) at a time using 32-bit reads
-      for (; j <= end - 8; j += 8) {
-        uint32_t word = *(const uint32_t*)(row + (j >> 1));
-        
-        int32_t c0 = (word & 0xF) - 8;
-        int32_t c1 = ((word >> 4) & 0xF) - 8;
-        int32_t c2 = ((word >> 8) & 0xF) - 8;
-        int32_t c3 = ((word >> 12) & 0xF) - 8;
-        int32_t c4 = ((word >> 16) & 0xF) - 8;
-        int32_t c5 = ((word >> 20) & 0xF) - 8;
-        int32_t c6 = ((word >> 24) & 0xF) - 8;
-        int32_t c7 = ((word >> 28) & 0xF) - 8;
-        
-        g += c0 * xq[j] + c1 * xq[j+1] + c2 * xq[j+2] + c3 * xq[j+3] + 
-             c4 * xq[j+4] + c5 * xq[j+5] + c6 * xq[j+6] + c7 * xq[j+7];
-      }
-      // Process 2 tokens (1 byte) at a time for remaining
-      for (; j <= end - 2; j += 2) {
+      for (int j = begin; j < end; j++) {
         uint8_t byte = row[j >> 1];
-        int32_t c0 = (byte & 0xF) - 8;
-        int32_t c1 = ((byte >> 4) & 0xF) - 8;
-        g += c0 * xq[j] + c1 * xq[j+1];
-      }
-      // Process 1 token for any remaining
-      if (j < end) {
-        uint8_t byte = row[j >> 1];
-        int32_t code = (byte & 0xF) - 8;
-        g += code * xq[j];
+        int code = (j & 1) ? (byte >> 4) : (byte & 0xF);
+        g += (code - 8) * (int)xq[j];
       }
       acc += (float)g * half2float(sc[gi]);
     }
@@ -237,33 +209,10 @@ static inline void matvec_q8_range(const QT *t, const int8_t *xq, float x_scale,
   }
 }
 
-/* Scalar int8 dot product, optimized with 32-bit word loads and unrolling. */
+/* Scalar int8 dot product. */
 static inline int32_t llm_dot_i8(const int8_t *a, const int8_t *b, int n) {
   int32_t acc = 0;
-  int i = 0;
-
-  // Process 4 elements at a time using 32-bit aligned loads (if possible)
-  // ESP32-S3 supports unaligned 32-bit access, which is much faster than 4x 8-bit reads
-  for (; i <= n - 4; i += 4) {
-    uint32_t av = *(const uint32_t*)(a + i);
-    uint32_t bv = *(const uint32_t*)(b + i);
-    
-    int8_t a0 = (int8_t)av;
-    int8_t b0 = (int8_t)bv;
-    int8_t a1 = (int8_t)(av >> 8);
-    int8_t b1 = (int8_t)(bv >> 8);
-    int8_t a2 = (int8_t)(av >> 16);
-    int8_t b2 = (int8_t)(bv >> 16);
-    int8_t a3 = (int8_t)(av >> 24);
-    int8_t b3 = (int8_t)(bv >> 24);
-    
-    acc += (int32_t)a0 * b0 + (int32_t)a1 * b1 + (int32_t)a2 * b2 + (int32_t)a3 * b3;
-  }
-
-  // Handle remaining elements
-  for (; i < n; i++) {
-    acc += (int32_t)a[i] * (int32_t)b[i];
-  }
+  for (int i = 0; i < n; i++) acc += (int32_t)a[i] * (int32_t)b[i];
   return acc;
 }
 
@@ -329,32 +278,29 @@ static inline float silu(float x) { return x / (1.f + expf(-x)); }
 // Parse header + bind all tensors. Returns 0 on ok, -1 on bad magic.
 static int llm_load(const uint8_t *base, Model *m) {
   const uint8_t *p = base;
-  struct __attribute__((packed)) {
-    uint32_t magic; int version; int dim; int hidden_dim; int n_layers;
-    int n_heads; int n_kv_heads; int vocab_size; int seq_len;
-    uint8_t shared_classifier; int group_size;
-  } h;
-  memcpy(&h, p, 41);
-  if (h.magic != LLM_MAGIC) return -1;
-  if (h.version != 1) return -3;
-  m->c.vocab = h.vocab_size;
-  m->out_vocab = h.vocab_size;
-  m->c.dim = h.dim;
-  m->c.n_layers = h.n_layers;
-  m->c.n_heads = h.n_heads;
-  m->c.n_kv_heads = h.n_kv_heads;
-  m->c.ffn = h.hidden_dim;
-  m->c.seq_len = h.seq_len;
-  m->c.shared_classifier = h.shared_classifier;
-  m->c.group = h.group_size;
-  m->c.rope_theta = 10000.0f; // Default for llama2
-  uint32_t flags = h.shared_classifier ? LLM_FLAG_TIED_HEAD : 0;
-  p = base + 256;
+  uint32_t h[4]; memcpy(h, p, 16); p += 16;   /* magic, version, header_bytes, flags */
+  if (h[0] != LLM_MAGIC) return -1;
+  /* Version 0 is not a version. A newer one may have changed tensor order, so
+   * refuse rather than mis-bind. An unknown flag bit means the writer asked for
+   * behaviour this reader does not implement, which is equally unsafe. */
+  if (h[1] == 0 || h[1] > LLM_FORMAT_VERSION) return -3;
+  if (h[2] < LLM_HEADER_BYTES || h[2] > LLM_HEADER_MAX) return -2;
+  if (h[3] & ~(uint32_t)LLM_FLAGS_KNOWN) return -3;
+  uint32_t flags = h[3];
+  uint32_t vio[2]; memcpy(vio, p, 8); p += 8; /* input_vocab, output_vocab */
+  m->c.vocab = (int)vio[0];
+  m->out_vocab = (int)vio[1];
+  int32_t hv[7]; memcpy(hv, p, 28); p += 28;
+  m->c.dim = hv[0]; m->c.n_layers = hv[1]; m->c.n_heads = hv[2];
+  m->c.ffn = hv[3]; m->c.ple_dim = hv[4]; m->c.seq_len = hv[5]; m->c.group = hv[6];
+  memcpy(&m->c.rope_theta, p, 4); p += 4;
+  /* Skip any fields a later version appended. */
+  p = base + h[2];
 
   /* Every dimension below indexes a fixed array or sizes an allocation, so a
    * malformed header must be rejected before any tensor is bound. */
   if (m->c.vocab <= 0 || m->out_vocab <= 0 ||
-      m->c.dim <= 0 || m->c.ffn <= 0  ||
+      m->c.dim <= 0 || m->c.ffn <= 0 || m->c.ple_dim <= 0 ||
       m->c.seq_len <= 0 || m->c.group <= 0 ||
       m->c.n_layers <= 0 || m->c.n_layers > LLM_MAX_LAYERS ||
       m->c.n_heads <= 0 || m->c.dim % m->c.n_heads != 0 ||
@@ -366,40 +312,32 @@ static int llm_load(const uint8_t *base, Model *m) {
 #ifdef LLM_INT8_ACT
   /* quantize_act writes into a fixed LLM_Q8_MAX_INPUT buffer, sized by the
    * widest matvec input: dim, ffn or ple_dim. */
-  if (m->c.dim > LLM_Q8_MAX_INPUT || m->c.ffn > LLM_Q8_MAX_INPUT )
+  if (m->c.dim > LLM_Q8_MAX_INPUT || m->c.ffn > LLM_Q8_MAX_INPUT ||
+      m->c.ple_dim > LLM_Q8_MAX_INPUT)
     return -2;
 #endif
 
   m->head_matvec = NULL;
   m->layer_matvec = NULL;
-  int D = m->c.dim, L = m->c.n_layers, F = m->c.ffn, V = m->c.vocab;
+  int D = m->c.dim, L = m->c.n_layers, P = m->c.ple_dim, F = m->c.ffn, V = m->c.vocab;
 
-  // if unquantized, use bind_f? Wait, llama2.c bin format has group_size > 0 for quant.
-  // The bind_q function requires group_size prepended. 
-  // Let's modify bind_q to NOT read group size from stream if it's already in header,
-  // or export_model.py writes it per tensor. export_model.py wrote it per tensor in our script.
-  
-  // Wait, export_model.py wrote it per tensor!
-  
-
-  int G = m->c.group;
-  p = bind_q(p, &m->tok_emb, V, D, G);
-  
-  for (int i = 0; i < L; i++) p = bind_f(p, &m->attn_norm[i], D);
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->wq[i], D, D, G);
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->wk[i], D, D, G); // assume n_kv_heads == n_heads
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->wv[i], D, D, G);
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->wo[i], D, D, G);
-  for (int i = 0; i < L; i++) p = bind_f(p, &m->ffn_norm[i], D);
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->w1[i], F, D, G);
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->w2[i], D, F, G);
-  for (int i = 0; i < L; i++) p = bind_q(p, &m->w3[i], F, D, G);
-  
+  p = bind_q(p, &m->tok_emb, V, D);
+  p = bind_q(p, &m->ple_model_proj, L * P, D);
+  p = bind_f(p, &m->ple_proj_norm, P);
+  p = bind_q(p, &m->ple_table, V, L * P);
+  for (int i = 0; i < L; i++) {
+    p = bind_f(p, &m->attn_norm[i], D);
+    p = bind_q(p, &m->qkv[i], 3 * D, D);
+    p = bind_q(p, &m->attn_proj[i], D, D);
+    p = bind_f(p, &m->ffn_norm[i], D);
+    p = bind_q(p, &m->gate[i], F, D);
+    p = bind_q(p, &m->up[i], F, D);
+    p = bind_q(p, &m->down[i], D, F);
+    p = bind_q(p, &m->ple_gate[i], P, D);
+    p = bind_q(p, &m->ple_proj[i], D, P);
+    p = bind_f(p, &m->ple_norm[i], D);
+  }
   p = bind_f(p, &m->out_norm, D);
-#ifdef HIERARCHICAL_SOFTMAX
-  int num_clusters = (m->out_vocab + 999) / 1000;
-  p = bind_q(p, &m->cluster_head, num_clusters, D, G);
-#endif
   /* Tied: the head is the FIRST out_vocab rows of the token embedding. The
    * embedding may store more rows than the model can ever emit (padding above
    * the tokenizer size), so tying does not imply equal row counts.
@@ -408,7 +346,7 @@ static int llm_load(const uint8_t *base, Model *m) {
     m->out_head = m->tok_emb;
     m->out_head.rows = m->out_vocab;
   } else {
-    p = bind_q(p, &m->out_head, m->out_vocab, D, G);
+    p = bind_q(p, &m->out_head, m->out_vocab, D);
   }
   m->image_bytes = (size_t)(p - base);
   return 0;
@@ -456,11 +394,13 @@ static inline void llm_stage_int8(QT *t, void *buffer) {
 static inline int llm_stage_core_int8_alloc(Model *m, void *(*alloc)(size_t)) {
   int staged = 0;
   QT *tensors[7];
+  void *buf = alloc(llm_stage_int8_bytes(&m->ple_model_proj));
+  if (buf) { llm_stage_int8(&m->ple_model_proj, buf); ++staged; }
   for (int l = 0; l < m->c.n_layers; l++) {
-    tensors[0] = &m->wq[l];        tensors[1] = &m->wk[l];
-    tensors[2] = &m->wv[l];        tensors[3] = &m->wo[l];
-    tensors[4] = &m->w1[l];        tensors[5] = &m->w2[l];
-    tensors[6] = &m->w3[l];
+    tensors[0] = &m->qkv[l];       tensors[1] = &m->attn_proj[l];
+    tensors[2] = &m->gate[l];      tensors[3] = &m->up[l];
+    tensors[4] = &m->down[l];      tensors[5] = &m->ple_gate[l];
+    tensors[6] = &m->ple_proj[l];
     for (int i = 0; i < 7; i++) {
       void *b = alloc(llm_stage_int8_bytes(tensors[i]));
       if (b) { llm_stage_int8(tensors[i], b); ++staged; }
@@ -471,16 +411,16 @@ static inline int llm_stage_core_int8_alloc(Model *m, void *(*alloc)(size_t)) {
 
 /* Number of tensors llm_stage_core_int8_alloc attempts. */
 static inline int llm_core_stage_count(const Model *m) {
-  return 7 * m->c.n_layers;
+  return 1 + 7 * m->c.n_layers;
 }
 
 // Scratch buffers, caller-allocated (host: malloc; device: PSRAM).
-typedef struct __attribute__((packed)) {
+typedef struct {
   float *x, *h, *qkv, *att, *g1, *g2, *ple, *tmpP, *trow, *logits;
   float *scores; // [seq_len], reused by each attention head
   float *kcache, *vcache; // [L * seq_len * D]
 #ifdef LLM_PROFILE
-  struct __attribute__((packed)) {
+  struct {
     uint64_t input_us, attn_us, ffn_us, ple_us, head_us;
     uint32_t calls;
   } profile;
@@ -500,7 +440,7 @@ static void llm_profile_reset(Scratch *s) {
        else MATVEC((t), (x), (y)); } while (0)
 
 static void llm_forward(Model *m, int token, int pos, Scratch *s) {
-  int D = m->c.dim, L = m->c.n_layers, F = m->c.ffn;
+  int D = m->c.dim, L = m->c.n_layers, P = m->c.ple_dim, F = m->c.ffn;
   int H = m->c.n_heads, Dh = D / H, S = m->c.seq_len;
 #ifdef LLM_PROFILE
   uint64_t profile_t0 = (uint64_t)LLM_PROFILE_NOW();
@@ -508,8 +448,21 @@ static void llm_forward(Model *m, int token, int pos, Scratch *s) {
 
   deq_row(&m->tok_emb, token, s->x);           // embedding
 
-  // RoPE frequencies
-  float rope_c[128], rope_s[128];
+  // ---- per-layer input: (RMSNorm(proj(x)/sqrt(D)) + table[tok]*sqrt(P)) / sqrt(2)
+  LLM_LMV(m, &m->ple_model_proj, s->x, s->tmpP); // [L*P]
+  float dscale = 1.f / sqrtf((float)D);
+  for (int i = 0; i < L * P; i++) s->tmpP[i] *= dscale;
+  for (int l = 0; l < L; l++)
+    rmsnorm(s->tmpP + l * P, m->ple_proj_norm, P, s->tmpP + l * P);
+  deq_row(&m->ple_table, token, s->trow);      // [L*P]
+  float sp = sqrtf((float)P), inv2 = 0.70710678f;
+  for (int i = 0; i < L * P; i++)
+    s->ple[i] = (s->tmpP[i] + s->trow[i] * sp) * inv2;
+
+  // RoPE frequencies are identical across every head and layer at a position.
+  // Reuse trow (dead after constructing s->ple) instead of recomputing the same
+  // pow/cos/sin values L*H times.
+  float *rope_c = s->trow, *rope_s = s->trow + Dh / 2;
   for (int i = 0; i < Dh / 2; i++) {
     float freq = powf(m->c.rope_theta, -2.f * i / Dh);
     rope_c[i] = cosf(pos * freq);
@@ -523,11 +476,8 @@ static void llm_forward(Model *m, int token, int pos, Scratch *s) {
   for (int l = 0; l < L; l++) {
     // ---- attention
     rmsnorm(s->x, m->attn_norm[l], D, s->h);
+    LLM_LMV(m, &m->qkv[l], s->h, s->qkv);        // [3D]
     float *q = s->qkv, *k = s->qkv + D, *v = s->qkv + 2 * D;
-    LLM_LMV(m, &m->wq[l], s->h, q);
-    LLM_LMV(m, &m->wk[l], s->h, k);
-    LLM_LMV(m, &m->wv[l], s->h, v);
-    
     // split-half RoPE at position pos, per head
     for (int hh = 0; hh < H; hh++) {
       float *qh = q + hh * Dh, *kh = k + hh * Dh;
@@ -542,7 +492,6 @@ static void llm_forward(Model *m, int token, int pos, Scratch *s) {
     float *kc = s->kcache + (size_t)l * S * D, *vc = s->vcache + (size_t)l * S * D;
     memcpy(kc + (size_t)pos * D, k, D * sizeof(float));
     memcpy(vc + (size_t)pos * D, v, D * sizeof(float));
-    
     // causal attention over 0..pos
     float scale = 1.f / sqrtf((float)Dh);
     for (int hh = 0; hh < H; hh++) {
@@ -566,7 +515,7 @@ static void llm_forward(Model *m, int token, int pos, Scratch *s) {
       }
       for (int i = 0; i < Dh; i++) ao[i] /= denom;
     }
-    LLM_LMV(m, &m->wo[l], s->att, s->h);
+    LLM_LMV(m, &m->attn_proj[l], s->att, s->h);
     for (int i = 0; i < D; i++) s->x[i] += s->h[i];
 #ifdef LLM_PROFILE
     uint64_t profile_t2 = (uint64_t)LLM_PROFILE_NOW();
@@ -575,55 +524,33 @@ static void llm_forward(Model *m, int token, int pos, Scratch *s) {
 
     // ---- SwiGLU FFN
     rmsnorm(s->x, m->ffn_norm[l], D, s->h);
-    LLM_LMV(m, &m->w1[l], s->h, s->g1);
-    LLM_LMV(m, &m->w3[l], s->h, s->g2);
+    LLM_LMV(m, &m->gate[l], s->h, s->g1);
+    LLM_LMV(m, &m->up[l], s->h, s->g2);
     for (int i = 0; i < F; i++) s->g1[i] = silu(s->g1[i]) * s->g2[i];
-    LLM_LMV(m, &m->w2[l], s->g1, s->h);
+    LLM_LMV(m, &m->down[l], s->g1, s->h);
     for (int i = 0; i < D; i++) s->x[i] += s->h[i];
 #ifdef LLM_PROFILE
     uint64_t profile_t3 = (uint64_t)LLM_PROFILE_NOW();
     s->profile.ffn_us += profile_t3 - profile_t2;
-    profile_t1 = profile_t3;
+#endif
+
+    // ---- PLE gate: x += RMSNorm(ple_proj(gelu(ple_gate(x)) * ple_l))
+    LLM_LMV(m, &m->ple_gate[l], s->x, s->g2);    // [P]
+    for (int i = 0; i < P; i++) s->g2[i] = gelu(s->g2[i]) * s->ple[l * P + i];
+    LLM_LMV(m, &m->ple_proj[l], s->g2, s->h);    // [D]
+    rmsnorm(s->h, m->ple_norm[l], D, s->h);
+    for (int i = 0; i < D; i++) s->x[i] += s->h[i];
+#ifdef LLM_PROFILE
+    profile_t1 = (uint64_t)LLM_PROFILE_NOW();
+    s->profile.ple_us += profile_t1 - profile_t3;
 #endif
   }
 
   rmsnorm(s->x, m->out_norm, D, s->x);
-#ifdef HIERARCHICAL_SOFTMAX
-  // 1. Evaluate the tiny cluster head (e.g., 32 clusters)
-  float cluster_logits[32];
-  if (m->head_matvec) m->head_matvec(&m->cluster_head, s->x, cluster_logits);
-  else MATVEC(&m->cluster_head, s->x, cluster_logits);
-  
-  // 2. Find the winning cluster (argmax)
-  int best_cluster = 0;
-  float max_val = cluster_logits[0];
-  for (int i = 1; i < 32; i++) {
-    if (cluster_logits[i] > max_val) {
-      max_val = cluster_logits[i];
-      best_cluster = i;
-    }
-  }
-  
-  // 3. Clear logits to very negative numbers
-  for (int i = 0; i < m->out_vocab; i++) s->logits[i] = -INFINITY;
-  
-  // 4. Only evaluate the 1000 words in the winning cluster!
-  int start_word = best_cluster * 1000;
-  int end_word = start_word + 1000;
-  if (end_word > m->out_vocab) end_word = m->out_vocab;
-  
-  // The C engine only does a dot product for these 1000 words:
-  for (int v = start_word; v < end_word; v++) {
-    const uint8_t* row = m->out_head.codes + (size_t)v * m->out_head.row_bytes;
-    // ... calculate dot product just for this row ...
-    // (mocked call, normally you would slice the QT struct)
-  }
-#else
   // output head: logits[v] = dot(out_head_row[v], x). out_head is tok_emb when
-  // tied; the config flag switches the data pointer but not the shape.
+  // the model ties them, and a separate tensor when it does not.
   if (m->head_matvec) m->head_matvec(&m->out_head, s->x, s->logits);
   else MATVEC(&m->out_head, s->x, s->logits);
-#endif
 #ifdef LLM_PROFILE
   s->profile.head_us += (uint64_t)LLM_PROFILE_NOW() - profile_t1;
   s->profile.calls++;
