@@ -8,6 +8,7 @@ Features:
    - Vocabulary ID boundaries (< vocab size)
    - Binary bin integrity (train.bin, val.bin)
    - Category distribution balance
+   - Train / Val prompt leakage check (overlap must be 0)
 
 2. Interactive Retrieval / Matcher Test:
    - Queries dataset using TF-IDF / token similarity to verify how questions match
@@ -76,6 +77,16 @@ def run_checks(vocab_size: int = 2048, seq_len: int = 128):
     print("\n--- Tokenizer Fidelity ---")
     print(f"  Round-trip decode errors:        {roundtrip_errors} (must be 0)")
 
+    # Check data leakage between train and val
+    train_prompts = {r["prompt"].strip().lower() for r in records if r.get("split") == "train"}
+    val_prompts = {r["prompt"].strip().lower() for r in records if r.get("split") == "val"}
+    leakage = train_prompts.intersection(val_prompts)
+
+    print("\n--- Train / Val Separation ---")
+    print(f"  Train samples:                   {len(train_prompts):,}")
+    print(f"  Val samples:                     {len(val_prompts):,}")
+    print(f"  Prompt leakage (overlap count):  {len(leakage)} (must be 0)")
+
     print("\n--- Category Breakdown ---")
     for cat, count in sorted(categories.items()):
         pct = (count / len(records)) * 100
@@ -94,6 +105,7 @@ def run_checks(vocab_size: int = 2048, seq_len: int = 128):
     all_passed = (
         exceeds == 0
         and roundtrip_errors == 0
+        and len(leakage) == 0
         and train_tokens.max() < vocab_size
         and val_tokens.max() < vocab_size
     )
@@ -140,7 +152,7 @@ def query_dataset(query_text: str, top_k: int = 3):
             continue
         seen_answers.add(r["completion"])
         count += 1
-        print(f"Match #{count} (Score: {score:.2f} | Category: {r['category']}):")
+        print(f"Match #{count} (Score: {score:.2f} | Category: {r['category']} | Split: {r.get('split', 'unknown')}):")
         print(f"  Prompt:     {r['prompt']}")
         print(f"  Answer:     {r['completion']}\n")
         if count >= top_k:

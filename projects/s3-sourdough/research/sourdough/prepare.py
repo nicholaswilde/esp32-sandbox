@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Train BPE tokenizer and export token bins for Sourdough Bread Baking model.
 
+Supports leak-free train/val splits when sourdough_qa.jsonl has 'split' tags.
+
 Outputs:
   - data/sourdough/vocab-{vocab}/tokenizer.json
   - data/sourdough/vocab-{vocab}/train.bin (uint16)
@@ -8,6 +10,7 @@ Outputs:
 """
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -18,6 +21,7 @@ from tokenizers import Tokenizer, decoders, models, pre_tokenizers, trainers
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data" / "sourdough"
 RAW_FILE = DATA_DIR / "raw" / "sourdough_corpus.txt"
+JSONL_FILE = DATA_DIR / "raw" / "sourdough_qa.jsonl"
 DEFAULT_VOCAB = 2048
 VAL_FRACTION = 0.05
 
@@ -77,8 +81,8 @@ def main():
         return
 
     # Ensure corpus exists
-    if not RAW_FILE.exists():
-        print(f"Raw corpus not found at {RAW_FILE}. Running generator...")
+    if not RAW_FILE.exists() or not JSONL_FILE.exists():
+        print(f"Raw dataset files not found. Running generator...")
         from research.sourdough.generate import main as run_generate
         run_generate()
 
@@ -88,25 +92,44 @@ def main():
     tok = train_tokenizer(text, args.vocab, tok_path, force=args.force)
     eot = tok.token_to_id("<|endoftext|>")
 
-    print("Encoding Q&A documents...")
-    # Split on endoftext to separate individual QA pairs
-    raw_docs = [d.strip() for d in text.split("<|endoftext|>") if d.strip()]
-    print(f"Total QA documents: {len(raw_docs):,}")
-
-    # Deterministic split: 95% train, 5% val
-    np.random.seed(42)
-    indices = np.random.permutation(len(raw_docs))
-    n_val = max(1, int(len(raw_docs) * VAL_FRACTION))
-    val_indices = set(indices[:n_val])
-
     train_ids = []
     val_ids = []
 
-    for i, doc in enumerate(raw_docs):
-        enc = tok.encode(doc)
-        target_list = val_ids if i in val_indices else train_ids
-        target_list.append(eot)
-        target_list.extend(enc.ids)
+    # Check if JSONL contains explicit train/val split tags (leak-free mode)
+    use_jsonl_splits = False
+    if JSONL_FILE.exists():
+        with open(JSONL_FILE, "r", encoding="utf-8") as f:
+            records = [json.loads(line) for line in f if line.strip()]
+        if any("split" in r for r in records):
+            use_jsonl_splits = True
+
+    if use_jsonl_splits:
+        train_docs = [f"User: {r['prompt']}\nAssistant: {r['completion']}" for r in records if r.get("split") != "val"]
+        val_docs = [f"User: {r['prompt']}\nAssistant: {r['completion']}" for r in records if r.get("split") == "val"]
+        print(f"Encoding Q&A documents using leak-free split (Train: {len(train_docs):,}, Val: {len(val_docs):,})...")
+
+        for doc in train_docs:
+            enc = tok.encode(doc)
+            train_ids.append(eot)
+            train_ids.extend(enc.ids)
+
+        for doc in val_docs:
+            enc = tok.encode(doc)
+            val_ids.append(eot)
+            val_ids.extend(enc.ids)
+    else:
+        print("Encoding Q&A documents using legacy split...")
+        raw_docs = [d.strip() for d in text.split("<|endoftext|>") if d.strip()]
+        np.random.seed(42)
+        indices = np.random.permutation(len(raw_docs))
+        n_val = max(1, int(len(raw_docs) * VAL_FRACTION))
+        val_indices = set(indices[:n_val])
+
+        for i, doc in enumerate(raw_docs):
+            enc = tok.encode(doc)
+            target_list = val_ids if i in val_indices else train_ids
+            target_list.append(eot)
+            target_list.extend(enc.ids)
 
     if train_ids:
         train_ids.append(eot)
