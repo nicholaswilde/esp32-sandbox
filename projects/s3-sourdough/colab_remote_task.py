@@ -75,7 +75,7 @@ def setup_workspace(base_dir: Path) -> Path:
 def run_pipeline(work_dir: Path, output_dir: Path, steps: int = 600, eval_every: int = 100):
     log(f"=== Action: Sourdough Training ({steps} steps) ===")
 
-    # Step 1: Generate dataset if not already unpacked
+    # Step 1: Generate raw dataset if not already present
     raw_corpus = work_dir / "data" / "sourdough" / "raw" / "sourdough_corpus.txt"
     if not raw_corpus.exists():
         log("Generating sourdough dataset...")
@@ -85,28 +85,52 @@ def run_pipeline(work_dir: Path, output_dir: Path, steps: int = 600, eval_every:
             check=True,
         )
 
-    # Step 2: Prepare tokenizer and token bins
-    tok_file = work_dir / "data" / "sourdough" / "vocab-2048" / "tokenizer.json"
-    train_bin = work_dir / "data" / "sourdough" / "vocab-2048" / "train.bin"
-    val_bin = work_dir / "data" / "sourdough" / "vocab-2048" / "val.bin"
-    if not (tok_file.exists() and train_bin.exists() and val_bin.exists()):
-        log("Preparing tokenizer and token bins...")
+    # Step 2: Ensure asymmetric vocabulary and layout exist
+    asym_dir = work_dir / "data" / "sourdough" / "asymmetric"
+    train_pt = asym_dir / "train.pt"
+    val_pt = asym_dir / "val.pt"
+    vocab_json = work_dir / "data" / "sourdough" / "vocab.json"
+    layout_json = work_dir / "data" / "sourdough" / "layout.json"
+    tok_json = work_dir / "data" / "sourdough" / "tokenizer.json"
+
+    if not vocab_json.exists():
+        log("Building curated output vocabulary (vocab.json)...")
         subprocess.run(
-            [sys.executable, "-m", "research.sourdough.prepare", "--vocab", "2048"],
+            [sys.executable, "-m", "research.sourdough.build_vocab"],
             cwd=str(work_dir),
             check=True,
         )
 
-    # Step 3: Train micro-LLM
-    log(f"Training PLE micro-LLM for {steps} steps...")
+    if not (layout_json.exists() and tok_json.exists()):
+        log("Building layout and training BPE tokenizer (layout.json, tokenizer.json)...")
+        subprocess.run(
+            [sys.executable, "-m", "research.sourdough.build_layout"],
+            cwd=str(work_dir),
+            check=True,
+        )
+
+    gen_headers = work_dir / "pc_tools" / "generate_vocab_headers.py"
+    if gen_headers.exists():
+        log("Generating C headers for asymmetric vocabulary...")
+        subprocess.run([sys.executable, str(gen_headers)], cwd=str(work_dir), check=True)
+
+    if not (train_pt.exists() and val_pt.exists()):
+        log("Preparing asymmetric training tensors (train.pt, val.pt)...")
+        subprocess.run(
+            [sys.executable, "-m", "research.sourdough.prepare_asymmetric"],
+            cwd=str(work_dir),
+            check=True,
+        )
+
+    # Step 3: Train PLE micro-LLM with asymmetric head
+    log(f"Training PLE micro-LLM for {steps} steps with asymmetric vocabulary...")
     train_cmd = [
         sys.executable,
         "-m",
         "research.sourdough.train",
         "--arm",
         "ple",
-        "--vocab",
-        "2048",
+        "--asymmetric",
         "--steps",
         str(steps),
         "--eval-every",
@@ -129,10 +153,18 @@ def run_pipeline(work_dir: Path, output_dir: Path, steps: int = 600, eval_every:
 
     # Step 5: Quantize and export model binary
     export_script = work_dir / "pc_tools" / "export_model.py"
-    if export_script.exists():
+    ckpt_path = work_dir / "runs" / "sourdough" / "ple-sourdough-v1-s0.pt"
+    if export_script.exists() and ckpt_path.exists():
         log("Quantizing and exporting INT4 binary artifact (sourdough_q4.bin)...")
         subprocess.run(
-            [sys.executable, str(export_script)],
+            [
+                sys.executable,
+                str(export_script),
+                "--ckpt",
+                str(ckpt_path),
+                "--tokenizer",
+                str(tok_json),
+            ],
             cwd=str(work_dir),
             check=True,
         )
@@ -152,11 +184,12 @@ def run_pipeline(work_dir: Path, output_dir: Path, steps: int = 600, eval_every:
                 shutil.copy2(src_f, output_dir / fname)
                 log(f"Staged {output_dir / fname} ({src_f.stat().st_size:,} bytes)")
 
-    if not (output_dir / "tokenizer.json").exists():
-        vocab_dir = work_dir / "data" / "sourdough" / "vocab-2048"
-        if (vocab_dir / "tokenizer.json").exists():
-            shutil.copy2(vocab_dir / "tokenizer.json", output_dir / "tokenizer.json")
-            log(f"Staged {output_dir / 'tokenizer.json'}")
+    sourdough_data = work_dir / "data" / "sourdough"
+    for fname in ["layout.json", "vocab.json", "tokenizer.json"]:
+        src_f = sourdough_data / fname
+        if src_f.exists() and not (output_dir / fname).exists():
+            shutil.copy2(src_f, output_dir / fname)
+            log(f"Staged {output_dir / fname}")
 
 
 def main():

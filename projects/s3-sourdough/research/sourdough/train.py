@@ -33,6 +33,33 @@ def get_device():
     return "cpu"
 
 
+class AsymmetricBatcher:
+    """Loads pre-encoded (x, y) tensor samples for asymmetric vocabulary training."""
+    def __init__(self, split: str, batch_size: int, seq_len: int, device: str, dataset_dir: Path, pad_id: int = 0, seed: int = 42):
+        self.bs, self.sl, self.device = batch_size, seq_len, device
+        self.pad_id = pad_id
+        self.rng = np.random.default_rng(1234 if split == "val" else seed)
+        path = dataset_dir / f"{split}.pt"
+        self.samples = torch.load(path, weights_only=True)
+
+    def stream(self):
+        n = len(self.samples)
+        while True:
+            ix = self.rng.integers(0, n, self.bs)
+            batch = [self.samples[i] for i in ix]
+            max_len = min(self.sl, max(len(s["x"]) for s in batch))
+            x_arr = np.full((self.bs, max_len), self.pad_id, dtype=np.int64)
+            y_arr = np.full((self.bs, max_len), -1, dtype=np.int64)
+            for j, s in enumerate(batch):
+                L = min(len(s["x"]), max_len)
+                x_arr[j, :L] = s["x"][:L].numpy()
+                y_arr[j, :L] = s["y"][:L].numpy()
+            yield (
+                torch.from_numpy(x_arr).to(self.device, non_blocking=True),
+                torch.from_numpy(y_arr).to(self.device, non_blocking=True),
+            )
+
+
 class Batcher:
     def __init__(self, split: str, batch_size: int, seq_len: int, device: str, dataset_dir: Path, seed: int = 42):
         self.bs, self.sl, self.device = batch_size, seq_len, device
@@ -142,31 +169,66 @@ def main():
     parser.add_argument("--eval-every", type=int, default=100, help="Evaluation interval")
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
     parser.add_argument("--tag", type=str, default="sourdough-v1", help="Run identifier tag")
+    parser.add_argument("--asymmetric", action="store_true", default=True, help="Use asymmetric vocabulary (default: True)")
+    parser.add_argument("--no-asymmetric", dest="asymmetric", action="store_false", help="Use legacy symmetric vocabulary")
 
     args = parser.parse_args()
-
-    dataset_dir = DATA_ROOT / f"vocab-{args.vocab}"
-    tok_path = dataset_dir / "tokenizer.json"
-    if not tok_path.exists():
-        raise SystemExit(
-            f"Dataset not found at {dataset_dir}. Run 'task sourdough:prepare' first."
-        )
-
-    tok_sha = hashlib.sha256(open(tok_path, "rb").read()).hexdigest()
 
     device = get_device()
     print(f"Training device: {device}")
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
-    base = Config(
-        seq_len=args.seq_len,
-        ple_dim=args.ple_dim,
-        vocab_size=args.vocab,
-        d_model=args.d_model,
-        n_layers=args.n_layers,
-        n_heads=args.n_heads,
-    )
-    model = make_model(args.arm, args.target_core, base).to(device)
+    micro_bs = min(args.micro_batch_size, args.batch_size)
+    accum_steps = max(1, args.batch_size // micro_bs)
+
+    if args.asymmetric:
+        layout_path = DATA_ROOT / "layout.json"
+        asym_dir = DATA_ROOT / "asymmetric"
+        if not layout_path.exists() or not (asym_dir / "train.pt").exists():
+            raise SystemExit(
+                "Asymmetric dataset or layout.json not found. Run 'task layout' and 'uv run python -m research.sourdough.prepare_asymmetric' first."
+            )
+        layout = json.loads(layout_path.read_text(encoding="utf-8"))
+        vocab_size = layout["total"]
+        out_vocab_size = layout["n_words"]
+        pad_id = layout["out2in"][0]
+
+        tok_path = DATA_ROOT / "tokenizer.json"
+        tok_sha = hashlib.sha256(open(tok_path, "rb").read()).hexdigest() if tok_path.exists() else "asym"
+
+        print(f"Asymmetric mode: vocab_size={vocab_size}, out_vocab_size={out_vocab_size} (untied head)")
+        base = Config(
+            seq_len=args.seq_len,
+            ple_dim=args.ple_dim,
+            vocab_size=vocab_size,
+            out_vocab_size=out_vocab_size,
+            d_model=args.d_model,
+            n_layers=args.n_layers,
+            n_heads=args.n_heads,
+        )
+        model = make_model(args.arm, args.target_core, base).to(device)
+
+        train_b = AsymmetricBatcher("train", micro_bs, args.seq_len, device, asym_dir, pad_id=pad_id, seed=args.seed)
+        val_b = AsymmetricBatcher("val", micro_bs, args.seq_len, device, asym_dir, pad_id=pad_id)
+    else:
+        dataset_dir = DATA_ROOT / f"vocab-{args.vocab}"
+        tok_path = dataset_dir / "tokenizer.json"
+        if not tok_path.exists():
+            raise SystemExit(f"Dataset not found at {dataset_dir}. Run 'task sourdough:prepare' first.")
+
+        tok_sha = hashlib.sha256(open(tok_path, "rb").read()).hexdigest()
+        base = Config(
+            seq_len=args.seq_len,
+            ple_dim=args.ple_dim,
+            vocab_size=args.vocab,
+            d_model=args.d_model,
+            n_layers=args.n_layers,
+            n_heads=args.n_heads,
+        )
+        model = make_model(args.arm, args.target_core, base).to(device)
+        train_b = Batcher("train", micro_bs, args.seq_len, device, dataset_dir, seed=args.seed)
+        val_b = Batcher("val", micro_bs, args.seq_len, device, dataset_dir)
+
     budget = model.param_budget()
     print(f"Model architecture: {args.arm.upper()} | Total parameters: {budget.get('total', 0):,}")
 
@@ -178,12 +240,6 @@ def main():
         lr=args.lr,
         betas=(0.9, 0.95),
     )
-
-    micro_bs = min(args.micro_batch_size, args.batch_size)
-    accum_steps = max(1, args.batch_size // micro_bs)
-
-    train_b = Batcher("train", micro_bs, args.seq_len, device, dataset_dir, seed=args.seed)
-    val_b = Batcher("val", micro_bs, args.seq_len, device, dataset_dir)
     train_stream = train_b.stream()
 
     run_name = f"{args.arm}-{args.tag}-s{args.seed}"

@@ -22,7 +22,18 @@ def get_device():
     return "cpu"
 
 
-def generate_response(model, tokenizer, prompt: str, max_new_tokens: int = 60, temperature: float = 0.7, top_p: float = 0.9):
+import json
+
+def generate_response(
+    model,
+    tokenizer,
+    prompt: str,
+    max_new_tokens: int = 60,
+    temperature: float = 0.7,
+    top_p: float = 0.9,
+    out2in: list[int] | None = None,
+    words: list[str] | None = None,
+):
     model.eval()
     device = next(model.parameters()).device
 
@@ -30,8 +41,10 @@ def generate_response(model, tokenizer, prompt: str, max_new_tokens: int = 60, t
     input_ids = tokenizer.encode(formatted_input).ids
     x = torch.tensor([input_ids], dtype=torch.long, device=device)
 
+    is_asym = out2in is not None and words is not None
     eot_id = tokenizer.token_to_id("<|endoftext|>")
 
+    generated_words = []
     with torch.no_grad():
         for _ in range(max_new_tokens):
             idx_cond = x if x.size(1) <= model.cfg.seq_len else x[:, -model.cfg.seq_len:]
@@ -49,14 +62,35 @@ def generate_response(model, tokenizer, prompt: str, max_new_tokens: int = 60, t
                 logits[indices_to_remove] = -float("Inf")
 
             probs = torch.softmax(logits, dim=-1)
-            next_id = torch.multinomial(probs, num_samples=1)
+            next_sample = torch.multinomial(probs, num_samples=1)
 
-            if next_id.item() == eot_id:
-                break
+            if is_asym:
+                cls_idx = next_sample.item()
+                if cls_idx >= len(words):
+                    break
+                w = words[cls_idx]
+                if w in ("<|endoftext|>", "<eos>", "<pad>"):
+                    break
+                # Spacing logic similar to firmware emit_word
+                punct = len(w) == 1 and w in ".,:;?%"
+                if generated_words and not punct:
+                    generated_words.append(" ")
+                generated_words.append(w)
+
+                in_tok = out2in[cls_idx]
+                next_id = torch.tensor([[in_tok]], dtype=torch.long, device=device)
+            else:
+                next_id = next_sample
+                if next_id.item() == eot_id:
+                    break
+
             x = torch.cat((x, next_id), dim=1)
 
-    generated_tokens = x[0].tolist()[len(input_ids):]
-    return tokenizer.decode(generated_tokens)
+    if is_asym:
+        return "".join(generated_words)
+    else:
+        generated_tokens = x[0].tolist()[len(input_ids):]
+        return tokenizer.decode(generated_tokens)
 
 
 def main():
@@ -75,8 +109,21 @@ def main():
     cfg = Config(**checkpoint["cfg"])
     vocab = checkpoint.get("vocab", 2048)
     arm = checkpoint.get("arm", "ple")
+    is_asym = checkpoint.get("asymmetric", False) or (cfg.out_vocab_size is not None and cfg.out_vocab_size != cfg.vocab_size)
 
-    tok_path = DATA_ROOT / f"vocab-{vocab}" / "tokenizer.json"
+    out2in = None
+    words = None
+    if is_asym:
+        tok_path = DATA_ROOT / "tokenizer.json"
+        layout_path = DATA_ROOT / "layout.json"
+        vocab_path = DATA_ROOT / "vocab.json"
+        with open(layout_path, "r", encoding="utf-8") as f:
+            out2in = json.load(f)["out2in"]
+        with open(vocab_path, "r", encoding="utf-8") as f:
+            words = [t["token"] for t in json.load(f)["tokens"]]
+    else:
+        tok_path = DATA_ROOT / f"vocab-{vocab}" / "tokenizer.json"
+
     tokenizer = Tokenizer.from_file(str(tok_path))
 
     device = get_device()
@@ -85,7 +132,9 @@ def main():
     model.load_state_dict(checkpoint["state"])
 
     print(f"\nUser: {args.prompt}")
-    answer = generate_response(model, tokenizer, args.prompt, temperature=args.temp)
+    answer = generate_response(
+        model, tokenizer, args.prompt, temperature=args.temp, out2in=out2in, words=words
+    )
     print(f"Assistant: {answer}\n")
 
 

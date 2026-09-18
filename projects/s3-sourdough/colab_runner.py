@@ -90,7 +90,7 @@ def create_payload_tar(tar_path: Path):
     """Create lightweight payload tarball excluding large binaries and caches."""
     log(f"Creating project payload at {tar_path}...")
     exclude_dirs = {".venv", "__pycache__", ".git", ".pio", "runs"}
-    exclude_exts = {".pt", ".o", ".a"}
+    exclude_exts = {".o", ".a"}
 
     def filter_tar(tarinfo):
         path_parts = Path(tarinfo.name).parts
@@ -98,12 +98,14 @@ def create_payload_tar(tar_path: Path):
             return None
         if Path(tarinfo.name).suffix in exclude_exts:
             return None
+        if Path(tarinfo.name).suffix == ".pt" and "runs" in path_parts:
+            return None
         if "pc_tools" in path_parts and Path(tarinfo.name).suffix == ".bin":
             return None
         return tarinfo
 
     with tarfile.open(tar_path, "w:gz") as tar:
-        for item in ["research", "data", "pc_tools", "pyproject.toml", "colab_remote_task.py"]:
+        for item in ["research", "data", "pc_tools", "src", "include", "pyproject.toml", "colab_remote_task.py"]:
             src = PROJECT_DIR / item
             if src.exists():
                 tar.add(src, arcname=item, filter=filter_tar)
@@ -225,13 +227,18 @@ def execute_build(
 
             pc_tools_dir = PROJECT_DIR / "pc_tools"
             pc_tools_dir.mkdir(parents=True, exist_ok=True)
-            for fname in ["sourdough_q4.bin", "tokenizer.json", "metadata.json", "golden.txt", "golden.npz"]:
+            for fname in ["sourdough_q4.bin", "tokenizer.json", "metadata.json", "golden.txt", "golden.npz", "layout.json", "vocab.json"]:
                 download_file(session_name, f"/content/output/{fname}", pc_tools_dir / fname, check=False)
 
-            vocab_dir = PROJECT_DIR / "data" / "sourdough" / "vocab-2048"
-            vocab_dir.mkdir(parents=True, exist_ok=True)
-            if (pc_tools_dir / "tokenizer.json").exists() and not (vocab_dir / "tokenizer.json").exists():
-                shutil.copy2(pc_tools_dir / "tokenizer.json", vocab_dir / "tokenizer.json")
+            data_sourdough = PROJECT_DIR / "data" / "sourdough"
+            data_sourdough.mkdir(parents=True, exist_ok=True)
+            for fname in ["tokenizer.json", "layout.json", "vocab.json"]:
+                if (pc_tools_dir / fname).exists():
+                    shutil.copy2(pc_tools_dir / fname, data_sourdough / fname)
+
+            gen_headers = pc_tools_dir / "generate_vocab_headers.py"
+            if gen_headers.exists() and (data_sourdough / "vocab.json").exists() and (data_sourdough / "layout.json").exists():
+                subprocess.run([sys.executable, str(gen_headers)], check=False)
 
             log("Training & INT4 quantization finished successfully! Artifacts saved in pc_tools/ and runs/.")
 

@@ -83,7 +83,7 @@ def main():
     parser.add_argument(
         "--tokenizer",
         type=Path,
-        default=PROJECT_DIR / "data" / "sourdough" / "vocab-2048" / "tokenizer.json",
+        default=PROJECT_DIR / "data" / "sourdough" / "tokenizer.json" if (PROJECT_DIR / "data" / "sourdough" / "tokenizer.json").exists() else PROJECT_DIR / "data" / "sourdough" / "vocab-2048" / "tokenizer.json",
         help="Path to tokenizer.json",
     )
     parser.add_argument(
@@ -109,7 +109,7 @@ def main():
     if not args.ckpt.exists():
         sys.exit(f"Error: checkpoint {args.ckpt} not found. Run training first.")
     if not args.tokenizer.exists():
-        sys.exit(f"Error: tokenizer {args.tokenizer} not found. Run 'task prepare' first.")
+        sys.exit(f"Error: tokenizer {args.tokenizer} not found. Run 'task layout' or 'task prepare' first.")
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -120,10 +120,8 @@ def main():
     if cfg.arm != "ple":
         sys.exit(f"Error: checkpoint arm={cfg.arm}, expected 'ple'")
 
-    # Load tokenizer and verify vocabulary
-    tokenizer = Tokenizer.from_file(str(args.tokenizer))
-    out_vocab = tokenizer.get_vocab_size()
-    print(f"input_vocab={cfg.vocab_size} | output_vocab={out_vocab} (active tokens)")
+    out_vocab = cfg.resolved_out_vocab_size
+    print(f"input_vocab={cfg.vocab_size} | output_vocab={out_vocab} (active classes)")
 
     model = TinyLM(cfg)
     model.load_state_dict(ck["state"])
@@ -155,8 +153,13 @@ def main():
         add_tensor(p + "ple_norm.weight", False)
 
     add_tensor("out_norm.weight", False)
+    flags = 0
+    if cfg.head_is_tied:
+        flags |= FLAG_TIED_HEAD
+    else:
+        add_tensor("head.weight", True)
 
-    print(f"Quantizing {len(plan)} tensors (group_size={args.group})...")
+    print(f"Quantizing {len(plan)} tensors (group_size={args.group}, untied_head={not cfg.head_is_tied})...")
     dq_sd = {k: v.clone() for k, v in sd.items()}
     blobs = []
 
@@ -170,7 +173,6 @@ def main():
 
     # Write binary artifact
     bin_path = args.out_dir / args.out_name
-    flags = FLAG_TIED_HEAD
 
     with open(bin_path, "wb") as f:
         # Header (56 bytes)
@@ -217,7 +219,7 @@ def main():
         "active_vocab_size": out_vocab,
         "seq_len": cfg.seq_len,
         "rope_theta": cfg.rope_theta,
-        "tied_head": True,
+        "tied_head": cfg.head_is_tied,
         "total_parameters": ck.get("params", {}).get("total", 2309248),
         "target_hardware": {
             "mcu": "ESP32-S3",
@@ -232,7 +234,7 @@ def main():
     print(f"✓ Wrote metadata to {meta_path}")
 
     # Golden verification inference
-    if "head.weight" in dq_sd:
+    if cfg.head_is_tied and "head.weight" in dq_sd:
         dq_sd["head.weight"] = dq_sd["tok_emb.weight"]
 
     gold = TinyLM(cfg)

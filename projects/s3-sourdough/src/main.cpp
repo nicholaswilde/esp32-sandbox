@@ -13,8 +13,9 @@
 
 #include "llm.h"
 #include "bpe_tokenizer.h"
-#include "generated/vocab.h"
 #include "generated/tokenizer_asset.h"
+#include "generated/sourdough_words.h"
+#include "generated/sourdough_out2in.h"
 
 // ---- Globals & Buffers -----------------------------------------------------
 static Model model;
@@ -52,8 +53,9 @@ static float job_xs;
 static float *job_y;
 static int job_split;
 
-static void worker_main(void *) {
-  for (;;) {
+static void worker_main(void *param) {
+  (void)param;
+  while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     matvec_i8_range(job_t, job_xq, job_xs, job_y, 0, job_split);
     xTaskNotifyGive(main_h);
@@ -63,9 +65,13 @@ static void worker_main(void *) {
 static void matvec_par(const QT *t, const float *x, float *y) {
   static int8_t xq[LLM_Q8_MAX_INPUT];
   float xs;
-  if (t->w8 == NULL || t->rows < 128) { MATVEC(t, x, y); return; }
+  if (!t->w8 || t->rows < 64) {
+    MATVEC(t, x, y);
+    return;
+  }
   quantize_act(x, t->cols, xq, &xs);
-  job_t = t; job_xq = xq; job_xs = xs; job_y = y; job_split = t->rows / 2;
+  job_t = t; job_xq = xq; job_xs = xs; job_y = y;
+  job_split = t->rows / 2;
   xTaskNotifyGive(worker_h);
   matvec_i8_range(t, xq, xs, y, job_split, t->rows);
   ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -95,6 +101,7 @@ static void copy_norms_to_sram() {
   Serial.printf("[s3-sourdough] Copied %d RMSNorm vectors to SRAM\n", n_vec);
 }
 
+// ---- Allocation & SRAM Buffers ---------------------------------------------
 static void alloc_scratch() {
   Cfg *c = &model.c;
   int D = c->dim, L = c->n_layers, F = c->ffn, P = c->ple_dim, S = c->seq_len;
@@ -113,6 +120,16 @@ static void alloc_scratch() {
   s.logits = (float *)ps_or_die((size_t)model.out_vocab * 4, "logits");
   s.kcache = (float *)ps_or_die((size_t)L * S * D * 4, "kcache");
   s.vcache = (float *)ps_or_die((size_t)L * S * D * 4, "vcache");
+}
+
+static void emit_word(int best, int &pieces_out) {
+  if (best < 0 || best >= SOURDOUGH_WORD_COUNT) return;
+  const char *w = SOURDOUGH_WORDS[best];
+  bool punct = (w[1] == '\0' && strchr(".,:;?%", w[0]) != NULL);
+  if (pieces_out && !punct) Serial.print(' ');
+  Serial.print(w);
+  Serial.flush();
+  pieces_out++;
 }
 
 // ---- Sampling Helpers ------------------------------------------------------
@@ -194,15 +211,6 @@ static int sample(float *logits, int n, float temperature, float topp, ProbIndex
   return pindex[last_idx].index;
 }
 
-static void emit(int tok) {
-  if (tok >= VOCAB_N) return;
-  const unsigned char *bytes = VOCAB_BLOB + VOCAB_OFF[tok];
-  int len = VOCAB_OFF[tok + 1] - VOCAB_OFF[tok];
-  if ((int)Serial.availableForWrite() >= len) {
-    Serial.write(bytes, len);
-    Serial.flush();
-  }
-}
 
 // ---- Setup & Inference REPL ------------------------------------------------
 void setup() {
@@ -250,6 +258,12 @@ void setup() {
   Serial.printf("[s3-sourdough] Model loaded: vocab=%d, dim=%d, layers=%d, heads=%d, ffn=%d, ple_dim=%d\n",
                 c->vocab, c->dim, c->n_layers, c->n_heads, c->ffn, c->ple_dim);
 
+  if (model.out_vocab != SOURDOUGH_WORD_COUNT) {
+    Serial.printf("FATAL: word table mismatch: model %d vs table %d\n",
+                  model.out_vocab, SOURDOUGH_WORD_COUNT);
+    while (1) delay(1000);
+  }
+
   // 4. Allocate Scratch & Relocate Norms
   alloc_scratch();
   copy_norms_to_sram();
@@ -262,13 +276,18 @@ void setup() {
   };
   int want = llm_core_stage_count(&model);
   int staged = llm_stage_core_int8_alloc(&model, ps_alloc_fn);
-  Serial.printf("[s3-sourdough] Staged %d/%d core tensors to int8 in PSRAM\n", staged, want);
+  void *hb = ps_alloc_fn(llm_stage_int8_bytes(&model.out_head));
+  if (hb) {
+    llm_stage_int8(&model.out_head, hb);
+    staged++;
+  }
+  Serial.printf("[s3-sourdough] Staged %d core + head tensors to int8 in PSRAM\n", staged);
 
   // 5. Setup dual-core acceleration
   main_h = xTaskGetCurrentTaskHandle();
   if (xTaskCreatePinnedToCore(worker_main, "matvec_worker", 4096, NULL, 2, &worker_h, 0) == pdPASS) {
     model.layer_matvec = matvec_par;
-    model.head_matvec = matvec_par;
+    if (model.out_head.w8) model.head_matvec = matvec_par;
     Serial.println("[s3-sourdough] Dual-core acceleration enabled (Core 0 + Core 1)");
   }
 
@@ -294,45 +313,57 @@ void loop() {
   // Echo user question
   Serial.println(prompt);
 
-  // Encode prompt: <|endoftext|>User: {prompt}\nAssistant:
-  char prompt_str[512];
-  snprintf(prompt_str, sizeof(prompt_str), "User: %s\nAssistant:", prompt.c_str());
-
+  // 1. Encode prompt with on-device BPE tokenizer
   uint16_t prompt_tokens[128];
-  prompt_tokens[0] = 0; // <|endoftext|>
-  int n_enc = bpe_encode_ascii(&tokenizer, prompt_str, prompt_tokens + 1, 127);
-  if (n_enc < 0) {
+  int n_prompt = bpe_encode_ascii(&tokenizer, prompt.c_str(), prompt_tokens, 120);
+  if (n_prompt < 0) {
     Serial.println("Assistant: Error: Prompt contains unsupported characters or is too long.\n");
     Serial.print("User: ");
     return;
   }
-  int n_prompt = 1 + n_enc;
 
   Serial.print("Assistant: ");
   llm_profile_reset(&s);
 
   int pos = 0;
-  // 1. Prime KV cache with prompt tokens
+  // 2. Prime KV cache with prompt tokens
   for (int i = 0; i < n_prompt; i++) {
     llm_forward(&model, prompt_tokens[i], pos++, &s);
   }
+  // 3. Feed BOS token
+  llm_forward(&model, SOURDOUGH_OUT2IN[SOURDOUGH_BOS], pos++, &s);
 
-  // 2. Autoregressive token generation
+  // 4. Autoregressive whole-word generation
   int64_t t0 = esp_timer_get_time();
-  int generated = 0;
-  int max_new_tokens = 60;
+  int pieces_out = 0;
+  int max_pieces = 60;
+  int recent[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
 
-  for (int step = 0; step < max_new_tokens && pos < model.c.seq_len; step++) {
-    int tok = sample(s.logits, model.out_vocab, 0.7f, 0.9f, probindex);
-    if (tok == 0) break; // <|endoftext|> stopping token
-    emit(tok);
-    llm_forward(&model, tok, pos++, &s);
-    generated++;
+  for (int step = 0; step < max_pieces && pos < model.c.seq_len; step++) {
+    // Mild repetition penalty on recently emitted classes
+    for (int r = 0; r < 8; r++) {
+      int prev = recent[r];
+      if (prev >= 0 && prev < SOURDOUGH_WORD_COUNT) {
+        if (s.logits[prev] > 0) s.logits[prev] *= 0.85f;
+        else s.logits[prev] *= 1.15f;
+      }
+    }
+
+    // Greedy decoding over output classes
+    int best = 0;
+    for (int k = 1; k < SOURDOUGH_WORD_COUNT; k++) {
+      if (s.logits[k] > s.logits[best]) best = k;
+    }
+    if (best == SOURDOUGH_EOS) break;
+    recent[step % 8] = best;
+
+    emit_word(best, pieces_out);
+    llm_forward(&model, SOURDOUGH_OUT2IN[best], pos++, &s);
   }
 
   int64_t total_us = esp_timer_get_time() - t0;
-  float tok_per_sec = (total_us > 0) ? (generated * 1e6f / total_us) : 0.0f;
+  float tok_per_sec = (total_us > 0) ? (pieces_out * 1e6f / total_us) : 0.0f;
 
-  Serial.printf("\n\n[%d tokens in %.2f s, %.1f tok/s]\n", generated, total_us / 1e6f, tok_per_sec);
+  Serial.printf("\n\n[%d words in %.2f s, %.1f words/s]\n", pieces_out, total_us / 1e6f, tok_per_sec);
   Serial.print("\nUser: ");
 }
