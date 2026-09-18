@@ -111,7 +111,10 @@ def run_quantize(work_dir: Path, output_dir: Path):
 
 
 def run_train(work_dir: Path, output_dir: Path, is_full: bool):
-    target_core = 15000000 if is_full else 1500000
+    target_core = 560000 if is_full else 1500000
+    d_model = 96 if is_full else 128
+    ple_dim = 128 if is_full else 64
+    seq_len = 256 if is_full else 512
     steps = 5000 if is_full else 500
     tag_suffix = f"v32768_c{target_core}"
     checkpoint_tag = f"ple-{tag_suffix}-s0"
@@ -139,6 +142,12 @@ def run_train(work_dir: Path, output_dir: Path, is_full: bool):
             "32768",
             "--target-core",
             str(target_core),
+            "--d-model",
+            str(d_model),
+            "--ple-dim",
+            str(ple_dim),
+            "--seq-len",
+            str(seq_len),
             "--steps",
             str(steps),
             "--seed",

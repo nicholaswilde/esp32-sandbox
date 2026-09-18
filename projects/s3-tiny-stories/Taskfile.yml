@@ -57,9 +57,9 @@ tasks:
       - uv run python -m research.tinystories.train --arm ple --vocab 25353 --target-core 1500000 --steps 500 --seed 0 --tag v25353_c1500000 --micro-batch-size 4 --profile-memory
 
   train-full:
-    desc: Train a full PLE model (28.9M params) matching esp32-ai
+    desc: Train a full PLE model (28.9M params, 14.9MB INT4) matching esp32-ai
     cmds:
-      - uv run python -m research.tinystories.train --arm ple --vocab 25353 --steps 10000 --seed 0
+      - uv run python -m research.tinystories.train --arm ple --vocab 32768 --d-model 96 --n-layers 6 --ple-dim 128 --target-core 560000 --batch-size 16 --seq-len 256 --steps 5000 --seed 0 --tag v32768_c560000
 
   export-test:
     desc: Export the quick 1.5M test model to binary format

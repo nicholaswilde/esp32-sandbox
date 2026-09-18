@@ -226,14 +226,14 @@ def execute_build(
             else:
                 art_dir = PROJECT_DIR / "artifacts" / "tinystories"
                 art_dir.mkdir(parents=True, exist_ok=True)
-                tag = "ple_v32768_c15000000_s0.bin" if action == "train-full" else "ple_v32768_c1500000_s0.bin"
+                tag = "ple_v32768_c560000_s0.bin" if action == "train-full" else "ple_v32768_c1500000_s0.bin"
                 out_local = art_dir / tag
                 if not download_file(session_name, f"/content/output/{tag}", out_local, check=True):
                     sys.exit(1)
                 log(f"Custom trained model saved to: {out_local} ({out_local.stat().st_size:,} bytes)")
 
                 # Also download references if available
-                for ref_name in ("model.bin", "tokenizer.json", "golden.txt"):
+                for ref_name in ("model.bin", "tokenizer.json", "golden.txt", "golden.npz"):
                     download_file(session_name, f"/content/output/{ref_name}", art_dir / ref_name, check=False)
 
             log("Build finished successfully! Ready to flash to ESP32-S3 via 'task flash-model'.")
