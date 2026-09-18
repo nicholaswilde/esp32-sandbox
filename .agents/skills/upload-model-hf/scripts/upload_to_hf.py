@@ -50,11 +50,11 @@ def main():
         sys.exit(1)
 
     # Determine default path if not provided
-    target_path = args.path
+    target_path = Path(args.path).resolve() if args.path else None
     if not target_path:
         default_candidate = s3_project / "pc_tools" / "stories15M_q4.bin"
         if default_candidate.exists():
-            target_path = str(default_candidate)
+            target_path = default_candidate
         else:
             print("Error: No --path provided and default model not found.", file=sys.stderr)
             sys.exit(1)

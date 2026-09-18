@@ -219,6 +219,7 @@ def main():
     parser.add_argument(
         "--path",
         "-p",
+        "--bin",
         type=str,
         default="pc_tools/stories15M_q4.bin",
         help="Local path to model binary or directory (default: pc_tools/stories15M_q4.bin)",
