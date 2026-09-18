@@ -1,8 +1,10 @@
 # :bread: ESP32-S3 Sourdough Baker Assistant :robot:
 
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-nicholascwilde%2Fesp32--s3--sourdough-ffd21e)](https://huggingface.co/nicholascwilde/esp32-s3-sourdough)
+
 An offline, on-device AI assistant for sourdough bread baking and troubleshooting that runs locally on an **ESP32-S3** microcontroller.
 
-Inspired by [slvDev/esp32-ai-barista](https://huggingface.co/slvDev/esp32-ai-barista), this model uses a lightweight **Per-Layer Embeddings (PLE)** architecture and a compact 2,048-token vocabulary to fit entirely into flash and PSRAM without requiring internet access or external APIs.
+Inspired by [slvDev/esp32-ai-barista](https://huggingface.co/slvDev/esp32-ai-barista), this model uses a lightweight **Per-Layer Embeddings (PLE)** architecture and a compact 2,048-token vocabulary to fit entirely into flash and PSRAM without requiring internet access or external APIs. Pre-trained weights, tokenizer, and dataset bundle are published at [nicholascwilde/esp32-s3-sourdough](https://huggingface.co/nicholascwilde/esp32-s3-sourdough).
 
 ---
 
@@ -43,13 +45,13 @@ cd projects/s3-sourdough
 *(Or set `CURRENT_PROJECT=s3-sourdough` in the root `.env` file).*
 
 ### 1. Generate the Q&A Dataset
-Expands the 50 curated sourdough troubleshooting topics into 5,000 conversational Q&A training pairs with varied prefixes and phrasings:
+Expands the 104 curated sourdough troubleshooting topics into 5,000 conversational Q&A training pairs with varied prefixes, phrasings, paraphrased answers, and leak-free validation splits:
 ```bash
 task generate
 ```
 Outputs in `data/sourdough/raw/`:
-* `sourdough_qa.jsonl` (Structured JSON lines dataset)
-* `sourdough_corpus.txt` (Text corpus formatted with `<|endoftext|>` delimiters, ~233k words)
+* `sourdough_qa.jsonl` (Structured JSON lines dataset tagged with train/val splits)
+* `sourdough_corpus.txt` (Text corpus formatted with `<|endoftext|>` delimiters, ~225k words)
 
 ### 2. Train Tokenizer and Prepare Binary Bins
 Trains a compact 2,048-token ByteLevel BPE tokenizer and encodes the corpus into `uint16` memmapped arrays:
@@ -143,13 +145,15 @@ Model checkpoints (`runs/sourdough/*.pt`) and tokenizer (`data/sourdough/vocab-2
 
 ## :cloud: Hugging Face Model Hub
 
-Upload the trained weights and the 5-file bundle (`README.md`, `LICENSE`, `metadata.json`, `*.bin`, `tokenizer.json`) to Hugging Face Hub:
+The complete model bundle (weights, tokenizer, C export configs, and dataset) is hosted on Hugging Face Hub at **[nicholascwilde/esp32-s3-sourdough](https://huggingface.co/nicholascwilde/esp32-s3-sourdough)**.
+
+Upload the trained weights, dataset, and the 6-file bundle (`README.md`, `LICENSE`, `metadata.json`, `*.bin`, `tokenizer.json`, `sourdough_qa.jsonl`) to Hugging Face Hub:
 
 ```bash
 # Preview upload files and sizes without pushing (Dry Run)
 uv run python upload_model_hf.py --dry-run
 
-# Upload to your Hugging Face account (<username>/esp32-s3-sourdough)
+# Upload to your Hugging Face account (nicholascwilde/esp32-s3-sourdough)
 task upload-model
 ```
 
@@ -157,7 +161,7 @@ task upload-model
 To download pre-trained weights and tokenizer without training locally:
 
 ```bash
-# Download from default repository (nicholaswilde/esp32-s3-sourdough)
+# Download from default repository (nicholascwilde/esp32-s3-sourdough)
 task download-model
 
 # Or download from a specific Hugging Face repository

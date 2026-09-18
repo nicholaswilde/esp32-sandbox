@@ -62,12 +62,14 @@ Inspired by [slvDev/esp32-ai-barista](https://huggingface.co/slvDev/esp32-ai-bar
 - **Vocabulary**: 2,048 tokens (compact ByteLevel BPE)
 - **Quantization**: INT4 grouped quantization (`group_size = 128`)
 - **Partition Offset**: `0x110000` (mapped via `esp_partition_mmap`)
+- **Training Dataset**: `sourdough_qa.jsonl` (5,000 conversational Q&A pairs covering 111 curated sourdough baking topics with leak-free validation split)
 - **Domain Scope**:
-  - Starter health (hooch, mold, feeding ratios, acetone smells, sluggish rise)
-  - Bulk fermentation (under/over-proofing signs, poke test, temperature)
-  - Hydration & shaping (sticky dough, rice flour bannetons, cold retard)
-  - Scoring & baking (steam, ear development, gummy crumb prevention)
-  - Baker's math & percentages (100/70/20/2 formulas)
+  - Starter health (hooch, mold, feeding ratios, acetone smells, sluggish rise, drying/reviving)
+  - Bulk fermentation (under/over-proofing signs, poke test, temperature, DDT formula)
+  - Hydration & shaping (sticky dough, rice flour bannetons, cold retard, batard stitching)
+  - Scoring & baking (steam, ear development, gummy crumb prevention, blisters, temperatures)
+  - Baker's math & percentages (100/70/20/2 formulas, preferment %, inclusion math)
+  - Guardrails (out-of-domain refusals, toxic food hazards, medical disclaimers)
 
 ## Quick Flashing to ESP32-S3
 
@@ -140,6 +142,17 @@ def collect_artifacts(
     for cand in tok_candidates:
         if cand.exists():
             artifacts["tokenizer.json"] = (cand, None)
+            break
+
+    # Dataset Q&A pairs (sourdough_qa.jsonl)
+    qa_candidates = [
+        base_dir / "sourdough_qa.jsonl",
+        repo_root / "projects" / "s3-sourdough" / "data" / "sourdough" / "raw" / "sourdough_qa.jsonl",
+        repo_root / "data" / "sourdough" / "raw" / "sourdough_qa.jsonl",
+    ]
+    for cand in qa_candidates:
+        if cand.exists():
+            artifacts["sourdough_qa.jsonl"] = (cand, None)
             break
 
     # Metadata

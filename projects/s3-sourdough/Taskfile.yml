@@ -64,12 +64,12 @@ tasks:
       - esptool --baud 921600 --port /dev/ttyACM0 write-flash 0x110000 pc_tools/sourdough_q4.bin
 
   upload-model:
-    desc: Upload Sourdough model bundle (README.md, LICENSE, metadata.json, *.bin, tokenizer.json) to Hugging Face Hub
+    desc: Upload Sourdough model bundle (README.md, LICENSE, metadata.json, *.bin, tokenizer.json, sourdough_qa.jsonl) to Hugging Face Hub
     cmds:
       - uv run python upload_model_hf.py --path pc_tools/
 
   download-model:
-    desc: Download Sourdough model bundle from Hugging Face Hub (e.g. task download-model REPO=nicholaswilde/esp32-s3-sourdough)
+    desc: Download Sourdough model bundle from Hugging Face Hub (e.g. task download-model REPO=nicholascwilde/esp32-s3-sourdough)
     vars:
       REPO: '{{.REPO | default ""}}'
     cmds:
