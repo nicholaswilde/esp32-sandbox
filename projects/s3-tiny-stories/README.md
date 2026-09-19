@@ -237,7 +237,32 @@ The download script automatically saves `stories15M_q4.bin`, `tokenizer.json`, a
 
 ---
 
-*   **Serial Port Busy (`[Errno 11] Resource temporarily unavailable`)**:
+## :bar_chart: On-Device Benchmark & Performance
+
+To verify throughput and behavioral equivalence against recorded baselines:
+```bash
+task benchmark
+```
+
+### Baseline Performance Metrics (ESP32-S3-DevKitC-1-N16R8 @ 240 MHz)
+
+| Metric | Measured Value | Target Budget |
+| :--- | :--- | :--- |
+| **Model Size** | 14,912,348 bytes (INT4) | 15.6 MB mapped partition |
+| **Active Parameters** | 28.9M (25.2M table + 3.7M core) | < 30M params |
+| **PSRAM Allocation** | 4.19 MB (44 INT8 tensors) | 8.0 MB physical (3.80 MB free) |
+| **SRAM Allocation** | 29.3 KB managed | 327 KB ceiling (320 KB free) |
+| **Throughput** | **5.51 tok/s** (181.65 ms/token) | > 5.0 tok/s |
+| **Latency Breakdown** | | |
+| ├─ Input / RoPE | 4.1 ms (2.3%) | — |
+| ├─ Self-Attention | 30.5 ms (16.8%) | — |
+| ├─ SwiGLU FFN | 11.0 ms (6.1%) | — |
+| ├─ PLE Projection | 11.3 ms (6.2%) | — |
+| └─ Output Head | 122.2 ms (67.3%) | Dual-core SIMD matvec |
+
+---
+
+## :wrench: Troubleshooting
     If `task flash` fails because `/dev/ttyACM0` is locked, close any active `task monitor` or serial terminals:
     ```bash
     pkill -f "pio device monitor"

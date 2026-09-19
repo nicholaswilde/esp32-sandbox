@@ -38,8 +38,12 @@ tasks:
 
   benchmark:
     desc: Run on-device serial benchmark
+    vars:
+      PORT: '{{.PORT | default "/dev/ttyACM0"}}'
+      OUT: '{{.OUT | default "runs/latest.json"}}'
+      BASELINE: '{{.BASELINE | default "runs/baseline.json"}}'
     cmds:
-      - uv run python scripts/benchmark_device.py tinystories
+      - uv run --with pyserial python scripts/benchmark_device.py tinystories --port {{.PORT}} --out {{.OUT}} --baseline {{.BASELINE}}
 
   export-model:
     desc: Export a trained PLE checkpoint to INT4 packed binary format
