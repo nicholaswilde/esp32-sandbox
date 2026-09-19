@@ -92,6 +92,14 @@ tasks:
     cmds:
       - uv run --with numpy --with torch --with huggingface-hub python export_model.py stories15M_q4.bin
 
+  upload:s3-tiny-stories:
+    desc: Upload s3-tiny-stories model.bin to Hugging Face Hub
+    dir: projects/s3-tiny-stories
+    vars:
+      MODEL_PATH: '{{.MODEL_PATH | default "pc_tools/model.bin"}}'
+    cmds:
+      - uv run python upload_model_hf.py --path {{.MODEL_PATH}} {{.CLI_ARGS}}
+
   build:s3-sourdough:
     desc: Build the s3-sourdough sandbox project
     dir: projects/s3-sourdough
