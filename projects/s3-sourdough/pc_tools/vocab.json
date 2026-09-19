@@ -1,6 +1,6 @@
 {
   "version": "sourdough-v1",
-  "total": 1882,
+  "total": 2197,
   "tokens": [
     {
       "token": "<pad>",
@@ -44,6 +44,10 @@
     },
     {
       "token": "0",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "00",
       "tier": "answers_existing"
     },
     {
@@ -111,6 +115,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "16",
+      "tier": "answers_existing"
+    },
+    {
       "token": "160",
       "tier": "answers_existing"
     },
@@ -119,7 +127,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "165",
+      "tier": "answers_existing"
+    },
+    {
       "token": "175",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "17g",
       "tier": "answers_existing"
     },
     {
@@ -156,6 +172,10 @@
     },
     {
       "token": "205",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "208",
       "tier": "answers_existing"
     },
     {
@@ -203,6 +223,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "250g",
+      "tier": "answers_existing"
+    },
+    {
       "token": "26",
       "tier": "answers_existing"
     },
@@ -212,6 +236,10 @@
     },
     {
       "token": "28",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "29",
       "tier": "answers_existing"
     },
     {
@@ -231,7 +259,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "32",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "325",
+      "tier": "answers_existing"
+    },
+    {
       "token": "334g",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "33g",
       "tier": "answers_existing"
     },
     {
@@ -327,6 +367,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "50g",
+      "tier": "answers_existing"
+    },
+    {
       "token": "550g",
       "tier": "answers_existing"
     },
@@ -348,6 +392,10 @@
     },
     {
       "token": "65",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "67g",
       "tier": "answers_existing"
     },
     {
@@ -395,6 +443,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "76",
+      "tier": "answers_existing"
+    },
+    {
       "token": "78",
       "tier": "answers_existing"
     },
@@ -412,6 +464,10 @@
     },
     {
       "token": "85",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "87",
       "tier": "answers_existing"
     },
     {
@@ -463,6 +519,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "98",
+      "tier": "answers_existing"
+    },
+    {
       "token": "99",
       "tier": "answers_existing"
     },
@@ -495,11 +555,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "absorption",
+      "tier": "answers_existing"
+    },
+    {
       "token": "abundant",
       "tier": "answers_existing"
     },
     {
       "token": "accelerate",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "accelerates",
       "tier": "answers_existing"
     },
     {
@@ -515,6 +583,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "account",
+      "tier": "answers_existing"
+    },
+    {
       "token": "accumulated",
       "tier": "answers_existing"
     },
@@ -524,6 +596,10 @@
     },
     {
       "token": "accuracy",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "accurately",
       "tier": "answers_existing"
     },
     {
@@ -540,6 +616,10 @@
     },
     {
       "token": "acidic",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "acidifies",
       "tier": "answers_existing"
     },
     {
@@ -595,6 +675,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "adjust",
+      "tier": "answers_existing"
+    },
+    {
       "token": "administration",
       "tier": "answers_existing"
     },
@@ -627,6 +711,14 @@
       "tier": "answers_existing"
     },
     {
+      "token": "aggressive",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "agitation",
+      "tier": "answers_existing"
+    },
+    {
       "token": "ai",
       "tier": "answers_existing"
     },
@@ -644,6 +736,10 @@
     },
     {
       "token": "airtight",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "airy",
       "tier": "answers_existing"
     },
     {
@@ -695,6 +791,18 @@
       "tier": "answers_existing"
     },
     {
+      "token": "aluminum",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "alveolation",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "alveoli",
+      "tier": "answers_existing"
+    },
+    {
       "token": "always",
       "tier": "answers_existing"
     },
@@ -703,11 +811,23 @@
       "tier": "answers_existing"
     },
     {
+      "token": "amber",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "ambient",
+      "tier": "answers_existing"
+    },
+    {
       "token": "ammonia",
       "tier": "answers_existing"
     },
     {
       "token": "amounts",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "ample",
       "tier": "answers_existing"
     },
     {
@@ -767,6 +887,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "aromas",
+      "tier": "answers_existing"
+    },
+    {
       "token": "around",
       "tier": "answers_existing"
     },
@@ -804,6 +928,10 @@
     },
     {
       "token": "at",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "attractive",
       "tier": "answers_existing"
     },
     {
@@ -871,6 +999,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "bakery",
+      "tier": "answers_existing"
+    },
+    {
       "token": "bakes",
       "tier": "answers_existing"
     },
@@ -888,6 +1020,10 @@
     },
     {
       "token": "ball",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "balls",
       "tier": "answers_existing"
     },
     {
@@ -940,6 +1076,14 @@
     },
     {
       "token": "batch",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "batches",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "batter",
       "tier": "answers_existing"
     },
     {
@@ -1047,6 +1191,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "blister",
+      "tier": "answers_existing"
+    },
+    {
       "token": "blistered",
       "tier": "answers_existing"
     },
@@ -1056,6 +1204,10 @@
     },
     {
       "token": "block",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "blonde",
       "tier": "answers_existing"
     },
     {
@@ -1115,11 +1267,23 @@
       "tier": "answers_existing"
     },
     {
+      "token": "bound",
+      "tier": "answers_existing"
+    },
+    {
       "token": "bowl",
       "tier": "answers_existing"
     },
     {
+      "token": "bowls",
+      "tier": "answers_existing"
+    },
+    {
       "token": "box",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "braided",
       "tier": "answers_existing"
     },
     {
@@ -1151,6 +1315,14 @@
       "tier": "answers_existing"
     },
     {
+      "token": "brine",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "brioche",
+      "tier": "answers_existing"
+    },
+    {
       "token": "brisk",
       "tier": "answers_existing"
     },
@@ -1168,6 +1340,10 @@
     },
     {
       "token": "brush",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "bubble",
       "tier": "answers_existing"
     },
     {
@@ -1219,11 +1395,23 @@
       "tier": "answers_existing"
     },
     {
+      "token": "burns",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "business",
+      "tier": "answers_existing"
+    },
+    {
       "token": "but",
       "tier": "answers_existing"
     },
     {
       "token": "butter",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "buttery",
       "tier": "answers_existing"
     },
     {
@@ -1244,6 +1432,10 @@
     },
     {
       "token": "c",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "cake",
       "tier": "answers_existing"
     },
     {
@@ -1335,6 +1527,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "centerline",
+      "tier": "answers_existing"
+    },
+    {
       "token": "ceramic",
       "tier": "answers_existing"
     },
@@ -1367,6 +1563,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "chew",
+      "tier": "answers_existing"
+    },
+    {
       "token": "chill",
       "tier": "answers_existing"
     },
@@ -1379,6 +1579,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "chimneys",
+      "tier": "answers_existing"
+    },
+    {
       "token": "chloramine",
       "tier": "answers_existing"
     },
@@ -1388,6 +1592,10 @@
     },
     {
       "token": "choking",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "cinnamon",
       "tier": "answers_existing"
     },
     {
@@ -1511,6 +1719,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "commonly",
+      "tier": "answers_existing"
+    },
+    {
       "token": "compete",
       "tier": "answers_existing"
     },
@@ -1551,6 +1763,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "condensing",
+      "tier": "answers_existing"
+    },
+    {
       "token": "conditions",
       "tier": "answers_existing"
     },
@@ -1587,6 +1803,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "constant",
+      "tier": "answers_existing"
+    },
+    {
       "token": "consult",
       "tier": "answers_existing"
     },
@@ -1596,6 +1816,10 @@
     },
     {
       "token": "consumed",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "contact",
       "tier": "answers_existing"
     },
     {
@@ -1644,6 +1868,14 @@
     },
     {
       "token": "contrast",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "contributes",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "contributing",
       "tier": "answers_existing"
     },
     {
@@ -1707,6 +1939,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "cornicione",
+      "tier": "answers_existing"
+    },
+    {
       "token": "cornmeal",
       "tier": "answers_existing"
     },
@@ -1727,11 +1963,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "covering",
+      "tier": "answers_existing"
+    },
+    {
       "token": "cozy",
       "tier": "answers_existing"
     },
     {
       "token": "crackers",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "cream",
       "tier": "answers_existing"
     },
     {
@@ -1744,6 +1988,10 @@
     },
     {
       "token": "creating",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "creation",
       "tier": "answers_existing"
     },
     {
@@ -1811,7 +2059,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "cube",
+      "tier": "answers_existing"
+    },
+    {
       "token": "cubes",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "cues",
       "tier": "answers_existing"
     },
     {
@@ -1851,6 +2107,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "custardy",
+      "tier": "answers_existing"
+    },
+    {
       "token": "cut",
       "tier": "answers_existing"
     },
@@ -1864,6 +2124,10 @@
     },
     {
       "token": "cylinder",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "cylindrical",
       "tier": "answers_existing"
     },
     {
@@ -1939,6 +2203,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "degradation",
+      "tier": "answers_existing"
+    },
+    {
       "token": "degraded",
       "tier": "answers_existing"
     },
@@ -1952,6 +2220,10 @@
     },
     {
       "token": "degrees",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "dehydrated",
       "tier": "answers_existing"
     },
     {
@@ -1971,6 +2243,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "delivering",
+      "tier": "answers_existing"
+    },
+    {
       "token": "dense",
       "tier": "answers_existing"
     },
@@ -1979,7 +2255,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "dental",
+      "tier": "answers_existing"
+    },
+    {
       "token": "depending",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "depth",
       "tier": "answers_existing"
     },
     {
@@ -1988,6 +2272,10 @@
     },
     {
       "token": "desired",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "despite",
       "tier": "answers_existing"
     },
     {
@@ -2016,6 +2304,10 @@
     },
     {
       "token": "developing",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "development",
       "tier": "answers_existing"
     },
     {
@@ -2067,7 +2359,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "dimple",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "dimpling",
+      "tier": "answers_existing"
+    },
+    {
       "token": "dioxide",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "diploid",
       "tier": "answers_existing"
     },
     {
@@ -2139,7 +2443,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "distributed",
+      "tier": "answers_existing"
+    },
+    {
       "token": "distributes",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "distribution",
       "tier": "answers_existing"
     },
     {
@@ -2176,6 +2488,10 @@
     },
     {
       "token": "domed",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "domes",
       "tier": "answers_existing"
     },
     {
@@ -2291,7 +2607,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "durum",
+      "tier": "answers_existing"
+    },
+    {
       "token": "dust",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "dusted",
       "tier": "answers_existing"
     },
     {
@@ -2343,7 +2667,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "effectively",
+      "tier": "answers_existing"
+    },
+    {
       "token": "effortless",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "egg",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "eggs",
       "tier": "answers_existing"
     },
     {
@@ -2363,11 +2699,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "elevated",
+      "tier": "answers_existing"
+    },
+    {
       "token": "eliminate",
       "tier": "answers_existing"
     },
     {
       "token": "eliminates",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "emmer",
       "tier": "answers_existing"
     },
     {
@@ -2411,6 +2755,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "enrich",
+      "tier": "answers_existing"
+    },
+    {
       "token": "enriched",
       "tier": "answers_existing"
     },
@@ -2420,6 +2768,10 @@
     },
     {
       "token": "ensures",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "ensuring",
       "tier": "answers_existing"
     },
     {
@@ -2436,6 +2788,10 @@
     },
     {
       "token": "environment",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "environments",
       "tier": "answers_existing"
     },
     {
@@ -2464,6 +2820,14 @@
     },
     {
       "token": "errors",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "escapes",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "escaping",
       "tier": "answers_existing"
     },
     {
@@ -2519,6 +2883,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "exceeding",
+      "tier": "answers_existing"
+    },
+    {
       "token": "exceeds",
       "tier": "answers_existing"
     },
@@ -2568,6 +2936,10 @@
     },
     {
       "token": "expect",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "experience",
       "tier": "answers_existing"
     },
     {
@@ -2639,6 +3011,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "falls",
+      "tier": "answers_existing"
+    },
+    {
       "token": "family",
       "tier": "answers_existing"
     },
@@ -2651,7 +3027,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "farro",
+      "tier": "answers_existing"
+    },
+    {
       "token": "faster",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "fat",
       "tier": "answers_existing"
     },
     {
@@ -2799,7 +3183,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "fixed",
+      "tier": "answers_existing"
+    },
+    {
       "token": "flakes",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "flaky",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "flaps",
       "tier": "answers_existing"
     },
     {
@@ -2835,6 +3231,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "floss",
+      "tier": "answers_existing"
+    },
+    {
       "token": "flour",
       "tier": "answers_existing"
     },
@@ -2855,6 +3255,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "fluffy",
+      "tier": "answers_existing"
+    },
+    {
       "token": "flying",
       "tier": "answers_existing"
     },
@@ -2864,6 +3268,10 @@
     },
     {
       "token": "focus",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "focuses",
       "tier": "answers_existing"
     },
     {
@@ -2927,11 +3335,23 @@
       "tier": "answers_existing"
     },
     {
+      "token": "formulate",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "formulation",
+      "tier": "answers_existing"
+    },
+    {
       "token": "forth",
       "tier": "answers_existing"
     },
     {
       "token": "foul",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "fracture",
       "tier": "answers_existing"
     },
     {
@@ -2975,6 +3395,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "fructose",
+      "tier": "answers_existing"
+    },
+    {
       "token": "fruit",
       "tier": "answers_existing"
     },
@@ -2995,7 +3419,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "fueling",
+      "tier": "answers_existing"
+    },
+    {
       "token": "fully",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "fuse",
       "tier": "answers_existing"
     },
     {
@@ -3051,7 +3483,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "generate",
+      "tier": "answers_existing"
+    },
+    {
       "token": "generates",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "generous",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "generously",
       "tier": "answers_existing"
     },
     {
@@ -3071,6 +3515,14 @@
       "tier": "answers_existing"
     },
     {
+      "token": "get",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "giant",
+      "tier": "answers_existing"
+    },
+    {
       "token": "give",
       "tier": "answers_existing"
     },
@@ -3080,6 +3532,14 @@
     },
     {
       "token": "glass",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "glaze",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "gliadin",
       "tier": "answers_existing"
     },
     {
@@ -3171,6 +3631,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "gumminess",
+      "tier": "answers_existing"
+    },
+    {
       "token": "gummy",
       "tier": "answers_existing"
     },
@@ -3227,6 +3691,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "harming",
+      "tier": "answers_existing"
+    },
+    {
       "token": "harmless",
       "tier": "answers_existing"
     },
@@ -3248,6 +3716,10 @@
     },
     {
       "token": "hazardous",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "hazelnut",
       "tier": "answers_existing"
     },
     {
@@ -3284,6 +3756,10 @@
     },
     {
       "token": "helps",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "herbs",
       "tier": "answers_existing"
     },
     {
@@ -3331,6 +3807,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "honey",
+      "tier": "answers_existing"
+    },
+    {
       "token": "honeycomb",
       "tier": "answers_existing"
     },
@@ -3359,7 +3839,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "hue",
+      "tier": "answers_existing"
+    },
+    {
       "token": "huge",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "hundreds",
       "tier": "answers_existing"
     },
     {
@@ -3383,6 +3871,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "hydrations",
+      "tier": "answers_existing"
+    },
+    {
       "token": "hyphae",
       "tier": "answers_existing"
     },
@@ -3395,7 +3887,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "icing",
+      "tier": "answers_existing"
+    },
+    {
       "token": "ideal",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "identical",
       "tier": "answers_existing"
     },
     {
@@ -3416,6 +3916,18 @@
     },
     {
       "token": "immense",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "imparting",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "impede",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "impervious",
       "tier": "answers_existing"
     },
     {
@@ -3459,6 +3971,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "incorporating",
+      "tier": "answers_existing"
+    },
+    {
       "token": "increase",
       "tier": "answers_existing"
     },
@@ -3479,11 +3995,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "indicate",
+      "tier": "answers_existing"
+    },
+    {
       "token": "indicates",
       "tier": "answers_existing"
     },
     {
       "token": "indicating",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "indicator",
       "tier": "answers_existing"
     },
     {
@@ -3512,6 +4036,10 @@
     },
     {
       "token": "initial",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "initially",
       "tier": "answers_existing"
     },
     {
@@ -3559,6 +4087,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "intensifies",
+      "tier": "answers_existing"
+    },
+    {
       "token": "interior",
       "tier": "answers_existing"
     },
@@ -3603,6 +4135,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "italian",
+      "tier": "answers_existing"
+    },
+    {
       "token": "its",
       "tier": "answers_existing"
     },
@@ -3619,6 +4155,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "jiggly",
+      "tier": "answers_existing"
+    },
+    {
       "token": "juice",
       "tier": "answers_existing"
     },
@@ -3631,6 +4171,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "kamut",
+      "tier": "answers_existing"
+    },
+    {
       "token": "keep",
       "tier": "answers_existing"
     },
@@ -3640,6 +4184,10 @@
     },
     {
       "token": "keeps",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "khorasan",
       "tier": "answers_existing"
     },
     {
@@ -3679,6 +4227,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "known",
+      "tier": "answers_existing"
+    },
+    {
       "token": "lacing",
       "tier": "answers_existing"
     },
@@ -3703,6 +4255,14 @@
       "tier": "answers_existing"
     },
     {
+      "token": "laminate",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "laminated",
+      "tier": "answers_existing"
+    },
+    {
       "token": "lamination",
       "tier": "answers_existing"
     },
@@ -3720,6 +4280,10 @@
     },
     {
       "token": "lasts",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "lateral",
       "tier": "answers_existing"
     },
     {
@@ -3744,6 +4308,10 @@
     },
     {
       "token": "leave",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "leavening",
       "tier": "answers_existing"
     },
     {
@@ -3807,6 +4375,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "lievito",
+      "tier": "answers_existing"
+    },
+    {
       "token": "lift",
       "tier": "answers_existing"
     },
@@ -3820,6 +4392,10 @@
     },
     {
       "token": "lightly",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "lightness",
       "tier": "answers_existing"
     },
     {
@@ -3883,6 +4459,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "loft",
+      "tier": "answers_existing"
+    },
+    {
       "token": "log",
       "tier": "answers_existing"
     },
@@ -3927,11 +4507,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "lowest",
+      "tier": "answers_existing"
+    },
+    {
       "token": "lukewarm",
       "tier": "answers_existing"
     },
     {
       "token": "made",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "madre",
       "tier": "answers_existing"
     },
     {
@@ -3944,6 +4532,14 @@
     },
     {
       "token": "maintain",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "maintained",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "maintaining",
       "tier": "answers_existing"
     },
     {
@@ -3972,6 +4568,10 @@
     },
     {
       "token": "malted",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "maltose",
       "tier": "answers_existing"
     },
     {
@@ -4023,6 +4623,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "maximize",
+      "tier": "answers_existing"
+    },
+    {
       "token": "maximizing",
       "tier": "answers_existing"
     },
@@ -4064,6 +4668,10 @@
     },
     {
       "token": "medication",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "medio",
       "tier": "answers_existing"
     },
     {
@@ -4115,11 +4723,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "migrate",
+      "tier": "answers_existing"
+    },
+    {
       "token": "milder",
       "tier": "answers_existing"
     },
     {
       "token": "mildness",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "milk",
       "tier": "answers_existing"
     },
     {
@@ -4136,6 +4752,18 @@
     },
     {
       "token": "miniature",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "minimally",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "minimize",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "minimizing",
       "tier": "answers_existing"
     },
     {
@@ -4183,6 +4811,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "moderate",
+      "tier": "answers_existing"
+    },
+    {
       "token": "moist",
       "tier": "answers_existing"
     },
@@ -4215,6 +4847,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "morning",
+      "tier": "answers_existing"
+    },
+    {
       "token": "motion",
       "tier": "answers_existing"
     },
@@ -4244,6 +4880,10 @@
     },
     {
       "token": "mug",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "multiple",
       "tier": "answers_existing"
     },
     {
@@ -4347,6 +4987,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "nourish",
+      "tier": "answers_existing"
+    },
+    {
       "token": "number",
       "tier": "answers_existing"
     },
@@ -4359,7 +5003,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "nutritious",
+      "tier": "answers_existing"
+    },
+    {
       "token": "nuts",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "nutty",
       "tier": "answers_existing"
     },
     {
@@ -4479,6 +5131,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "outward",
+      "tier": "answers_existing"
+    },
+    {
       "token": "outwards",
       "tier": "answers_existing"
     },
@@ -4531,11 +5187,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "packed",
+      "tier": "answers_existing"
+    },
+    {
       "token": "packing",
       "tier": "answers_existing"
     },
     {
       "token": "paint",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "pair",
       "tier": "answers_existing"
     },
     {
@@ -4647,6 +5311,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "perfectly",
+      "tier": "answers_existing"
+    },
+    {
       "token": "perform",
       "tier": "answers_existing"
     },
@@ -4711,11 +5379,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "pinwheels",
+      "tier": "answers_existing"
+    },
+    {
       "token": "pizza",
       "tier": "answers_existing"
     },
     {
       "token": "place",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "placed",
       "tier": "answers_existing"
     },
     {
@@ -4791,6 +5467,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "power",
+      "tier": "answers_existing"
+    },
+    {
       "token": "pre",
       "tier": "answers_existing"
     },
@@ -4839,6 +5519,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "preserve",
+      "tier": "answers_existing"
+    },
+    {
       "token": "preserving",
       "tier": "answers_existing"
     },
@@ -4871,11 +5555,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "primitive",
+      "tier": "answers_existing"
+    },
+    {
       "token": "prior",
       "tier": "answers_existing"
     },
     {
       "token": "probe",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "proceeds",
       "tier": "answers_existing"
     },
     {
@@ -4892,6 +5584,10 @@
     },
     {
       "token": "producing",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "production",
       "tier": "answers_existing"
     },
     {
@@ -4923,6 +5619,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "promotes",
+      "tier": "answers_existing"
+    },
+    {
       "token": "promoting",
       "tier": "answers_existing"
     },
@@ -4932,6 +5632,10 @@
     },
     {
       "token": "prone",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "pronounced",
       "tier": "answers_existing"
     },
     {
@@ -4960,6 +5664,10 @@
     },
     {
       "token": "protease",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "proteases",
       "tier": "answers_existing"
     },
     {
@@ -5019,6 +5727,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "push",
+      "tier": "answers_existing"
+    },
+    {
       "token": "pushing",
       "tier": "answers_existing"
     },
@@ -5028,6 +5740,10 @@
     },
     {
       "token": "qualified",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "quality",
       "tier": "answers_existing"
     },
     {
@@ -5103,7 +5819,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "reacts",
+      "tier": "answers_existing"
+    },
+    {
       "token": "read",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "readily",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "readings",
       "tier": "answers_existing"
     },
     {
@@ -5131,11 +5859,31 @@
       "tier": "answers_existing"
     },
     {
+      "token": "recreate",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "rectangle",
+      "tier": "answers_existing"
+    },
+    {
       "token": "rectangular",
       "tier": "answers_existing"
     },
     {
+      "token": "redistributes",
+      "tier": "answers_existing"
+    },
+    {
       "token": "reduce",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "reducing",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "refractory",
       "tier": "answers_existing"
     },
     {
@@ -5183,6 +5931,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "relaxed",
+      "tier": "answers_existing"
+    },
+    {
       "token": "relaxes",
       "tier": "answers_existing"
     },
@@ -5200,6 +5952,10 @@
     },
     {
       "token": "reliably",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "rely",
       "tier": "answers_existing"
     },
     {
@@ -5223,11 +5979,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "remilled",
+      "tier": "answers_existing"
+    },
+    {
       "token": "remove",
       "tier": "answers_existing"
     },
     {
       "token": "repeat",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "replacing",
       "tier": "answers_existing"
     },
     {
@@ -5248,6 +6012,14 @@
     },
     {
       "token": "requires",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "residual",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "resilient",
       "tier": "answers_existing"
     },
     {
@@ -5323,6 +6095,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "revitalizes",
+      "tier": "answers_existing"
+    },
+    {
       "token": "revives",
       "tier": "answers_existing"
     },
@@ -5347,6 +6123,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "rimacinata",
+      "tier": "answers_existing"
+    },
+    {
       "token": "rimmed",
       "tier": "answers_existing"
     },
@@ -5368,6 +6148,10 @@
     },
     {
       "token": "rising",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "risking",
       "tier": "answers_existing"
     },
     {
@@ -5411,6 +6195,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "rolling",
+      "tier": "answers_existing"
+    },
+    {
       "token": "rolls",
       "tier": "answers_existing"
     },
@@ -5420,6 +6208,10 @@
     },
     {
       "token": "rooms",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "rosemary",
       "tier": "answers_existing"
     },
     {
@@ -5539,6 +6331,14 @@
       "tier": "answers_existing"
     },
     {
+      "token": "scatter",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "scattered",
+      "tier": "answers_existing"
+    },
+    {
       "token": "schedule",
       "tier": "answers_existing"
     },
@@ -5599,6 +6399,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "sealing",
+      "tier": "answers_existing"
+    },
+    {
       "token": "seals",
       "tier": "answers_existing"
     },
@@ -5639,11 +6443,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "semola",
+      "tier": "answers_existing"
+    },
+    {
       "token": "semolina",
       "tier": "answers_existing"
     },
     {
       "token": "separate",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "separating",
       "tier": "answers_existing"
     },
     {
@@ -5719,7 +6531,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "shears",
+      "tier": "answers_existing"
+    },
+    {
       "token": "sheet",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "sheets",
       "tier": "answers_existing"
     },
     {
@@ -5735,7 +6555,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "shock",
+      "tier": "answers_existing"
+    },
+    {
       "token": "shoe",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "shoes",
       "tier": "answers_existing"
     },
     {
@@ -5744,6 +6572,10 @@
     },
     {
       "token": "shorten",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "shortening",
       "tier": "answers_existing"
     },
     {
@@ -5779,6 +6611,14 @@
       "tier": "answers_existing"
     },
     {
+      "token": "sidewalls",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "sideways",
+      "tier": "answers_existing"
+    },
+    {
       "token": "sign",
       "tier": "answers_existing"
     },
@@ -5804,6 +6644,10 @@
     },
     {
       "token": "since",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "single",
       "tier": "answers_existing"
     },
     {
@@ -5951,11 +6795,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "soda",
+      "tier": "answers_existing"
+    },
+    {
       "token": "soft",
       "tier": "answers_existing"
     },
     {
       "token": "soften",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "softened",
       "tier": "answers_existing"
     },
     {
@@ -5976,6 +6828,10 @@
     },
     {
       "token": "solid",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "solids",
       "tier": "answers_existing"
     },
     {
@@ -6000,6 +6856,10 @@
     },
     {
       "token": "sour",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "sources",
       "tier": "answers_existing"
     },
     {
@@ -6071,6 +6931,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "sprays",
+      "tier": "answers_existing"
+    },
+    {
       "token": "spread",
       "tier": "answers_existing"
     },
@@ -6099,11 +6963,23 @@
       "tier": "answers_existing"
     },
     {
+      "token": "spritzing",
+      "tier": "answers_existing"
+    },
+    {
       "token": "square",
       "tier": "answers_existing"
     },
     {
+      "token": "stability",
+      "tier": "answers_existing"
+    },
+    {
       "token": "stable",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "stage",
       "tier": "answers_existing"
     },
     {
@@ -6183,6 +7059,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "steels",
+      "tier": "answers_existing"
+    },
+    {
       "token": "stick",
       "tier": "answers_existing"
     },
@@ -6228,6 +7108,10 @@
     },
     {
       "token": "stoneground",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "stones",
       "tier": "answers_existing"
     },
     {
@@ -6307,7 +7191,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "structured",
+      "tier": "answers_existing"
+    },
+    {
       "token": "structures",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "style",
       "tier": "answers_existing"
     },
     {
@@ -6316,6 +7208,14 @@
     },
     {
       "token": "substances",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "substantial",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "subtle",
       "tier": "answers_existing"
     },
     {
@@ -6343,6 +7243,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "sugar",
+      "tier": "answers_existing"
+    },
+    {
       "token": "sugars",
       "tier": "answers_existing"
     },
@@ -6359,7 +7263,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "supplemental",
+      "tier": "answers_existing"
+    },
+    {
       "token": "support",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "supportive",
       "tier": "answers_existing"
     },
     {
@@ -6383,6 +7295,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "surrounded",
+      "tier": "answers_existing"
+    },
+    {
       "token": "surrounding",
       "tier": "answers_existing"
     },
@@ -6396,6 +7312,10 @@
     },
     {
       "token": "swift",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "switching",
       "tier": "answers_existing"
     },
     {
@@ -6511,6 +7431,22 @@
       "tier": "answers_existing"
     },
     {
+      "token": "tenderize",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "tenderizes",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "tenderness",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "tensile",
+      "tier": "answers_existing"
+    },
+    {
       "token": "tension",
       "tier": "answers_existing"
     },
@@ -6603,6 +7539,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "three",
+      "tier": "answers_existing"
+    },
+    {
       "token": "thrive",
       "tier": "answers_existing"
     },
@@ -6624,6 +7564,10 @@
     },
     {
       "token": "tight",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "tighten",
       "tier": "answers_existing"
     },
     {
@@ -6655,6 +7599,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "tipo",
+      "tier": "answers_existing"
+    },
+    {
       "token": "to",
       "tier": "answers_existing"
     },
@@ -6663,11 +7611,19 @@
       "tier": "answers_existing"
     },
     {
+      "token": "tolerates",
+      "tier": "answers_existing"
+    },
+    {
       "token": "too",
       "tier": "answers_existing"
     },
     {
       "token": "tool",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "toothsome",
       "tier": "answers_existing"
     },
     {
@@ -6688,6 +7644,10 @@
     },
     {
       "token": "tough",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "toward",
       "tier": "answers_existing"
     },
     {
@@ -6712,6 +7672,10 @@
     },
     {
       "token": "transfer",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "transferring",
       "tier": "answers_existing"
     },
     {
@@ -6740,6 +7704,14 @@
     },
     {
       "token": "tremendous",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "trigger",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "triggered",
       "tier": "answers_existing"
     },
     {
@@ -6811,6 +7783,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "ultra",
+      "tier": "answers_existing"
+    },
+    {
       "token": "un",
       "tier": "answers_existing"
     },
@@ -6831,7 +7807,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "underbaking",
+      "tier": "answers_existing"
+    },
+    {
       "token": "undercooked",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "underlying",
       "tier": "answers_existing"
     },
     {
@@ -6860,6 +7844,10 @@
     },
     {
       "token": "unfermented",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "unflavored",
       "tier": "answers_existing"
     },
     {
@@ -6971,7 +7959,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "vaulted",
+      "tier": "answers_existing"
+    },
+    {
       "token": "vent",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "ventilate",
       "tier": "answers_existing"
     },
     {
@@ -6987,11 +7983,23 @@
       "tier": "answers_existing"
     },
     {
+      "token": "vessel",
+      "tier": "answers_existing"
+    },
+    {
       "token": "via",
       "tier": "answers_existing"
     },
     {
+      "token": "viability",
+      "tier": "answers_existing"
+    },
+    {
       "token": "viable",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "vigorous",
       "tier": "answers_existing"
     },
     {
@@ -7011,11 +8019,23 @@
       "tier": "answers_existing"
     },
     {
+      "token": "virgin",
+      "tier": "answers_existing"
+    },
+    {
       "token": "virtually",
       "tier": "answers_existing"
     },
     {
       "token": "visible",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "visual",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "volcanic",
       "tier": "answers_existing"
     },
     {
@@ -7051,7 +8071,15 @@
       "tier": "answers_existing"
     },
     {
+      "token": "warmth",
+      "tier": "answers_existing"
+    },
+    {
       "token": "was",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "washed",
       "tier": "answers_existing"
     },
     {
@@ -7076,6 +8104,10 @@
     },
     {
       "token": "weakening",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "weakens",
       "tier": "answers_existing"
     },
     {
@@ -7139,6 +8171,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "whisk",
+      "tier": "answers_existing"
+    },
+    {
       "token": "white",
       "tier": "answers_existing"
     },
@@ -7195,6 +8231,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "work",
+      "tier": "answers_existing"
+    },
+    {
       "token": "workflow",
       "tier": "answers_existing"
     },
@@ -7211,6 +8251,10 @@
       "tier": "answers_existing"
     },
     {
+      "token": "wrist",
+      "tier": "answers_existing"
+    },
+    {
       "token": "x",
       "tier": "answers_existing"
     },
@@ -7224,6 +8268,10 @@
     },
     {
       "token": "yeasts",
+      "tier": "answers_existing"
+    },
+    {
+      "token": "yellow",
       "tier": "answers_existing"
     },
     {
@@ -7257,6 +8305,222 @@
     {
       "token": "zipper",
       "tier": "answers_existing"
+    },
+    {
+      "token": "aerobic",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "anaerobic",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "baguette",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "baguettes",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "belly",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "biga",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "blistering",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "boules",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "bromated",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "brotform",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "celsius",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "challah",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "cheddar",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "ciabatta",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "couche",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "degas",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "dimpled",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "doughy",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "endosperm",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "fahrenheit",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "graham",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "jalapeno",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "kilograms",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "lactobacillus",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "laminating",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "milling",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "neapolitan",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "olives",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "pliable",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "poolish",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "poppy",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "preferment",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "preshape",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "preshaped",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "preshaping",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "proofer",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "pumpernickel",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "sanfranciscensis",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "sesame",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "shatter",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "slashing",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "stickiness",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "stitched",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "sunflower",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "tacky",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "tenacity",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "thyme",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "tightening",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "tins",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "tunnels",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "viscosity",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "viscous",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "walnuts",
+      "tier": "domain_lexicon"
+    },
+    {
+      "token": "wholemeal",
+      "tier": "domain_lexicon"
     },
     {
       "token": "again",
@@ -7519,10 +8783,6 @@
       "tier": "numbers"
     },
     {
-      "token": "three",
-      "tier": "numbers"
-    },
-    {
       "token": "triple",
       "tier": "numbers"
     },
@@ -7533,8 +8793,9 @@
   ],
   "tier_counts": {
     "punctuation": 10,
-    "answers_existing": 1804,
+    "answers_existing": 2066,
+    "domain_lexicon": 54,
     "function": 56,
-    "numbers": 12
+    "numbers": 11
   }
 }

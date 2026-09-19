@@ -24,6 +24,15 @@ tasks:
     cmds:
       - uv run --with pyserial python ../../.agents/skills/test-device/scripts/test_device.py {{if .PROMPT}}--query "{{.PROMPT}}"{{end}}
 
+  benchmark:
+    desc: Record on-device benchmark results and compare against baseline and previous runs
+    vars:
+      NAME: '{{.NAME | default ""}}'
+      RUN: '{{.RUN | default "false"}}'
+    cmds:
+      - uv run python ../../.agents/skills/record-benchmark/scripts/record_benchmark.py {{if eq .RUN "true"}}--run{{end}} {{if .NAME}}--name "{{.NAME}}"{{end}}
+
+
   generate:
     desc: Generate and expand curated Sourdough Q&A dataset
     cmds:

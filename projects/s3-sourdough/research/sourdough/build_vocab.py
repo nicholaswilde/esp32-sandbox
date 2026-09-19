@@ -42,6 +42,49 @@ COMMON_FUNCTION_WORDS = [
     "why", "will", "with", "won't", "would", "wouldn't", "you", "you're", "your", "yours"
 ]
 
+CURATED_BAKING_TERMS = [
+    # Grains & Flour types
+    "rye", "spelt", "einkorn", "emmer", "kamut", "khorasan", "durum", "semolina",
+    "pumpernickel", "wholemeal", "graham", "semola", "rimacinata", "tipo",
+    "wheat", "germ", "bran", "endosperm", "glutenin", "gliadin", "ash", "milling",
+    "stoneground", "unbleached", "bleached", "bromated", "protein", "hard", "soft",
+    # Microorganisms & Fermentation chemistry
+    "lactobacillus", "sanfranciscensis", "yeast", "yeasts", "bacteria", "acetic",
+    "lactic", "acidity", "acidic", "proteolysis", "amylase", "enzymes", "enzymatic",
+    "ferment", "ferments", "fermentation", "fermenting", "preferment", "levain",
+    "poolish", "sponge", "biga", "madre", "lievito", "hooch", "discard", "aerobic",
+    "anaerobic", "ph", "fermentolyse", "autolyse", "inoculation",
+    # Dough Rheology & Physical States
+    "extensibility", "elasticity", "tenacity", "alveoli", "alveolation", "hydration",
+    "viscosity", "viscous", "gelatinization", "retrogradation", "stickiness",
+    "tacky", "pliable", "supple", "extensible", "elastic", "tensile", "slack",
+    "taut", "doughy", "jiggly", "aerated", "gluten",
+    # Techniques & Tools
+    "banneton", "bannetons", "brotform", "lame", "couche", "bench", "scraper",
+    "challenger", "cloche", "dutch", "steel", "steels", "stone", "stones",
+    "dimpling", "dimple", "dimpled", "stitching", "stitch", "stitched",
+    "lamination", "laminating", "laminated", "scoring", "slashing", "scored",
+    "retard", "retarding", "retarded", "proofing", "proofer", "preshape",
+    "preshaping", "preshaped", "degas", "degassing", "tension", "tightening",
+    "rounding", "folding", "folds", "coil", "stretch", "aliquot",
+    # Baked Goods, Formats & Shapes
+    "batard", "batards", "boule", "boules", "baguette", "baguettes", "focaccia",
+    "ciabatta", "brioche", "panettone", "challah", "pizza", "neapolitan",
+    "crackers", "pancakes", "waffles", "pullman", "tin", "tins", "loaf", "loaves",
+    "crumb", "crust", "crumbly", "sandwich",
+    # Crust & Crumb Diagnostics
+    "flying", "tunnel", "tunnels", "gummy", "gumminess", "pale", "blister",
+    "blistering", "blisters", "ear", "ears", "belly", "bloom", "cavernous",
+    "dense", "open", "custardy", "shatter", "crisp", "caramelization", "maillard",
+    # Inclusions, Enrichments & Additives
+    "cheddar", "jalapeno", "walnuts", "olives", "rosemary", "thyme", "sesame",
+    "sunflower", "poppy", "honey", "butter", "egg", "eggs", "oil", "milk",
+    "water", "salt", "brine", "malt", "diastatic",
+    # Measurements & Temperatures
+    "celsius", "fahrenheit", "grams", "kilograms", "percentages", "percentage",
+    "ratio", "internal", "ambient", "overnight", "chilled",
+]
+
 NUMBER_WORDS = [
     "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
     "ten", "twenty", "thirty", "fifty", "half", "double", "triple"
@@ -77,6 +120,7 @@ def build_vocabulary(qa_path: Path) -> Dict:
     tier_counts = {
         "punctuation": len(SPECIALS) + len(PUNCTUATION),
         "answers_existing": 0,
+        "domain_lexicon": 0,
         "function": 0,
         "numbers": 0,
     }
@@ -94,14 +138,20 @@ def build_vocabulary(qa_path: Path) -> Dict:
         tokens.append({"token": w, "tier": "answers_existing"})
         tier_counts["answers_existing"] += 1
 
-    # 4. Function words not already present
-    function_additions = [w for w in COMMON_FUNCTION_WORDS if w not in existing_answer_words and w not in PUNCTUATION]
+    # 4. Curated domain terminology not already in answers
+    domain_additions = [w for w in sorted(set(CURATED_BAKING_TERMS)) if w not in existing_answer_words and w not in PUNCTUATION and w not in SPECIALS]
+    for w in domain_additions:
+        tokens.append({"token": w, "tier": "domain_lexicon"})
+        tier_counts["domain_lexicon"] += 1
+
+    # 5. Function words not already present
+    function_additions = [w for w in COMMON_FUNCTION_WORDS if w not in existing_answer_words and w not in domain_additions and w not in PUNCTUATION]
     for w in sorted(function_additions):
         tokens.append({"token": w, "tier": "function"})
         tier_counts["function"] += 1
 
-    # 5. Number words not already present
-    number_additions = [w for w in NUMBER_WORDS if w not in existing_answer_words and w not in function_additions]
+    # 6. Number words not already present
+    number_additions = [w for w in NUMBER_WORDS if w not in existing_answer_words and w not in domain_additions and w not in function_additions]
     for w in sorted(number_additions):
         tokens.append({"token": w, "tier": "numbers"})
         tier_counts["numbers"] += 1

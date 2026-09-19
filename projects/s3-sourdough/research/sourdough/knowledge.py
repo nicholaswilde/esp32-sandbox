@@ -1661,7 +1661,515 @@ QA_ENTRIES: List[Dict] = [
         ],
     },
 
+        # =========================================================================
+    # Expanded Sourdough Topics: Ancient Grains, Pizza, Enriched & Diagnostics
     # =========================================================================
+    {
+        "category": "starter_health",
+        "questions": [
+            "Why should I feed my sourdough starter with rye flour?",
+            "Is rye flour good for a sluggish sourdough starter?",
+            "How does whole rye flour boost starter vigor and fermentation?",
+            "Can I switch my white flour starter to whole rye?",
+            "Why does my starter rise so much faster with rye flour?",
+        ],
+        "answers": [
+            "Rye flour is packed with fermentable sugars, micronutrients, and pentosans that nourish wild yeasts and lactic acid bacteria. Adding 20% to 50% dark or whole rye accelerates fermentation and revitalizes sluggish starters.",
+            "Whole rye flour naturally lowers pH faster, creating an optimal acidic environment that suppresses unwanted bacteria while fueling yeast activity and vigorous gas production.",
+        ],
+    },
+    {
+        "category": "starter_health",
+        "questions": [
+            "What is lievito madre and how does it differ from liquid starter?",
+            "How do I maintain a stiff sweet Italian starter like pasta madre?",
+            "What is the difference between a 100% hydration starter and pasta madre?",
+            "How does lievito madre achieve mild acidity for sweet doughs?",
+            "Why use a stiff 50% hydration starter for panettone and brioche?",
+        ],
+        "answers": [
+            "Lievito madre is a stiff Italian sourdough starter maintained at 45% to 50% hydration, often rolled or bound in cloth. Its dense environment favors lactic acid over acetic acid, yielding sweet, fruity aromas and strong leavening power for panettone and brioche.",
+            "Pasta madre is washed and laminated to balance yeast and lactic acid bacteria, minimizing sharp sourness. Its low moisture and structured gluten trap fermentation gases effectively for enriched doughs.",
+        ],
+    },
+    {
+        "category": "starter_health",
+        "questions": [
+            "How do I make crispy crackers using sourdough discard?",
+            "What is the best recipe for baking sourdough discard crackers?",
+            "Can I bake crackers directly with unfed sourdough discard?",
+            "How much fat should I add to sourdough discard for crackers?",
+            "My sourdough discard crackers are chewy instead of crisp.",
+        ],
+        "answers": [
+            "Mix 200g sourdough discard with 30g melted butter or olive oil, 2g salt, and herbs like rosemary. Spread thinly onto parchment paper and bake at 325°F (165°C) for 20 to 25 minutes until golden and brittle.",
+            "For ultra-crisp crackers, roll or spread the batter paper-thin and bake until fully dehydrated. Incorporating fat tenderizes the crumb, preventing a tough texture.",
+        ],
+    },
+    {
+        "category": "starter_health",
+        "questions": [
+            "How do I make fluffy pancakes or waffles from sourdough discard?",
+            "Can I use sourdough discard straight from the fridge for pancakes?",
+            "Why do sourdough discard pancakes need baking soda?",
+            "How does sourdough discard tenderize waffle batter?",
+            "What is the ratio for sourdough discard pancakes?",
+        ],
+        "answers": [
+            "Whisk 240g sourdough discard with one egg, 30g milk, 15g sugar, and 2g salt. Stir in 3g baking soda right before cooking; the discard acid reacts with baking soda to generate instant carbon dioxide bubbles for fluffy pancakes.",
+            "Sourdough discard breaks down starches and tenderizes the batter, yielding crisp waffles and tender pancakes with subtle fermented depth.",
+        ],
+    },
+    {
+        "category": "starter_health",
+        "questions": [
+            "Should I keep my sourdough starter in a proofing box?",
+            "What temperature should I set my proofing box for sourdough starter?",
+            "Can keeping a starter above 85F damage wild yeast?",
+            "How does a proofing box help sourdough starter consistency?",
+            "What is the ideal thermal range for feeding starter in winter?",
+        ],
+        "answers": [
+            "A proofing box set between 75°F and 80°F (24°C to 27°C) provides thermal stability for predictable rising times. Avoid exceeding 85°F (29°C), which over-acidifies starter and weakens yeast viability.",
+            "Consistent warmth around 78°F balances yeast gas production and lactic acid bacteria fermentation, preventing sluggish activity in cold winter kitchens.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "What is the ideal pH for sourdough dough during bulk fermentation?",
+            "How does dough pH affect sourdough gluten structure and crumb?",
+            "What happens to bread dough if the pH drops too low?",
+            "When should I shape sourdough based on pH meter readings?",
+            "Why does sourdough dough liquefy when over-acidified?",
+        ],
+        "answers": [
+            "Sourdough mixed with levain starts around pH 5.0 to 5.5 and should finish bulk fermentation between pH 3.8 and 4.2. If pH drops below 3.7, proteolysis accelerates and breaks down the gluten matrix into a sticky soup.",
+            "Acidity tightens gluten initially but degrades it when excessive. Shape dough before pH falls below 4.0 to preserve dough elasticity, oven spring, and open alveolation.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "What is proteolysis and why is my sourdough dough turning into soup?",
+            "Why did my fermented dough lose all elasticity and become a puddle?",
+            "How do protease enzymes break down gluten in sourdough bread?",
+            "Can I save sourdough dough that has suffered from severe proteolysis?",
+            "How do I prevent enzymatic gluten breakdown during long fermentation?",
+        ],
+        "answers": [
+            "Proteolysis is the enzymatic degradation of gluten proteins by proteases, triggered by excessive acidity and extended warm fermentation. Once gluten bonds break down, the dough loses all tensile strength and turns into an unshapeable batter.",
+            "Prevent proteolysis by shortening bulk fermentation, reducing levain percentage, keeping dough temperature below 78°F (26°C), and using high-protein unbleached flours with resilient gluten.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "Why did the top crust detach from my loaf creating a flying crust?",
+            "What causes a hollow space between the crust and crumb in sourdough?",
+            "Why is there a giant air pocket directly under my sourdough top crust?",
+            "How do I prevent a flying crust on my sourdough bread?",
+            "Does weak shaping cause the crust to separate from the crumb?",
+        ],
+        "answers": [
+            "A flying crust happens when steam and expanding gas get trapped beneath a prematurely set top crust, separating it from the underlying crumb. It is commonly caused by under-fermentation, weak surface tension during shaping, or insufficient oven steam.",
+            "Ensure ample steam for the first 20 minutes of baking and score with sufficient depth and angle. Proper bulk fermentation ensures uniform gas distribution so bubbles do not migrate to the surface.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "Why is there a dense gummy line right beneath my sourdough crust?",
+            "What causes a wet gray line under the bread crust after baking?",
+            "How do I eliminate the gum line under the upper crust of my loaf?",
+            "Is a gummy layer under the crust caused by underbaking or steam?",
+            "Why is the crumb gummy right under the crust even though the loaf sounds hollow?",
+        ],
+        "answers": [
+            "A dense gum line under the crust is caused by trapped moisture from cutting the bread before it cools completely, underbaking the core, or insufficient bottom heat from a cold baking vessel.",
+            "Bake until internal bread temperature reaches 208°F to 210°F (98°C to 99°C). Cool the baked loaf on an elevated wire rack for at least 2 hours so steam evaporates rather than condensing into gumminess.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "Why does my sourdough have giant tunnel holes surrounded by dense bread?",
+            "What causes huge cavernous voids inside a dense sourdough crumb?",
+            "Is a large tunnel hole through my loaf a sign of under-fermentation?",
+            "How do I distinguish fool's crumb tunnel holes from open crumb?",
+            "Why did my loaf only expand in one giant bubble in the middle?",
+        ],
+        "answers": [
+            "Giant tunnel holes surrounded by tight, gummy dough indicate under-fermentation, known as fool's crumb. The young dough lacks distributed micro-bubbles, so trapped steam escapes through single cavernous chimneys.",
+            "Extend bulk fermentation until dough is airy, domes at the container edges, and displays scattered surface bubbles. Uniform fermentation yields evenly aerated alveoli without dense gum pockets.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "How do I properly use an aliquot jar during sourdough bulk fermentation?",
+            "What is the best shape and size for an aliquot jar sample?",
+            "Why is my aliquot jar rising much faster than the main dough mass?",
+            "How much dough should I put in an aliquot jar to track rise?",
+            "Can an aliquot jar accurately indicate when bulk fermentation is done?",
+        ],
+        "answers": [
+            "Place a 30g to 40g sample of freshly mixed dough into a narrow, straight-sided cylindrical container. Keep it directly beside the main dough bowl so both experience identical thermal conditions to accurately measure volume rise.",
+            "Aliquot samples can warm faster than large dough bowls if placed near drafts or heat sources. Shield the aliquot jar and match its temperature to the main batch for reliable percentage readings.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "How do I manage sourdough bulk fermentation in extreme summer heat above 85F?",
+            "My kitchen is 85F and my sourdough dough is rising way too quickly.",
+            "What adjustments should I make for baking sourdough in high ambient temperatures?",
+            "How to stop sourdough from over-fermenting in hot summer weather?",
+            "Should I use ice water for sourdough in hot weather?",
+        ],
+        "answers": [
+            "In hot kitchens above 80°F (27°C), use chilled water for mixing, reduce levain inoculation to 10% or 12%, and stop bulk fermentation at a lower volume rise (around 30% to 50%) before transferring to the refrigerator.",
+            "Warm temperatures accelerate bacterial acid production faster than yeast leavening. Complete sets of stretch and folds within the first 90 minutes and chill early to prevent gluten breakdown.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "How do I bake sourdough in a cold kitchen below 65F?",
+            "My sourdough dough is taking 10 to 12 hours to rise in winter cold.",
+            "How do I adjust sourdough recipes for cold room temperatures?",
+            "Can I use warmer water to offset a cold kitchen for sourdough?",
+            "How do I keep sourdough dough warm during winter bulk fermentation?",
+        ],
+        "answers": [
+            "Use warm water at 85°F to 90°F (30°C to 32°C) to reach a desired dough temperature of 78°F (26°C), increase levain to 20% or 25%, and ferment inside an oven with the interior light turned on.",
+            "In cool environments below 68°F, fermentation proceeds slowly without harming quality. Rely on visual cues like rounded dough edges and aerated lightness rather than fixed clock times.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "How do I perform dough lamination during sourdough bulk fermentation?",
+            "When is the best time to laminate sourdough bread dough?",
+            "How do I incorporate cheese, jalapeños, or seeds using lamination?",
+            "What is the benefit of laminating sourdough dough on the bench?",
+            "My sourdough dough tears when I try to laminate it on the counter.",
+        ],
+        "answers": [
+            "Lightly mist your work surface with water, gently stretch the relaxed dough into a wide thin rectangle without ripping, scatter inclusions evenly across the sheet, and fold into thirds like a business letter.",
+            "Laminate 60 to 90 minutes into bulk fermentation after initial gluten development. It strengthens tensile structure, redistributes gas, and incorporates ingredients cleanly without deflating crumb.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How does spelt flour behave in sourdough bread recipes?",
+            "Why is spelt sourdough dough so extensible and slack?",
+            "Can I substitute 100% spelt flour for bread flour in sourdough?",
+            "How much water does spelt flour absorb compared to wheat flour?",
+            "How do I shape delicate spelt sourdough loaves without spreading?",
+        ],
+        "answers": [
+            "Spelt flour features high extensibility but fragile elasticity and lower water absorption than standard hard wheat. Reduce hydration by 3% to 5%, minimize autolyse time, and handle gently to prevent gluten tears.",
+            "Spelt gluten degrades rapidly during prolonged fermentation. Shorten bulk rise, perform gentle coil folds, and proof in a supportive oval banneton to prevent spreading on the baking stone.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How do I bake sourdough bread with ancient einkorn flour?",
+            "Why is einkorn sourdough dough so sticky and weak?",
+            "Can you make an open crumb sourdough loaf with 100% einkorn?",
+            "What hydration should I use for einkorn sourdough bread?",
+            "Is it better to bake einkorn sourdough in a loaf tin?",
+        ],
+        "answers": [
+            "Einkorn has a primitive diploid gluten structure that does not form elastic tensile sheets, producing a sticky, cake-like dough. Keep hydration between 60% and 65%, mix minimally, and bake in a greased loaf pan for structural support.",
+            "Avoid aggressive stretch and folds with einkorn as excessive agitation shears its delicate proteins. Gentle folding and tin baking produce a tender, nutritious loaf with deep golden crumb and nutty aroma.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "What are the baking characteristics of emmer or farro flour in sourdough?",
+            "How do I use emmer flour in sourdough bread formulations?",
+            "Does emmer flour absorb more water than standard white flour?",
+            "What percentage of emmer should I blend with bread flour?",
+            "Why does emmer sourdough produce a dense, chewy crumb?",
+        ],
+        "answers": [
+            "Emmer (farro medio) yields a dense, dark crumb with rich hazelnut flavor and moderate gluten strength. Blend 20% to 30% stoneground emmer with strong bread flour to maintain structural loft and open crumb.",
+            "Emmer bran absorbs water readily; provide a 45-minute autolyse to soften bran particles. Pair with moderate hydration (72% to 75%) and gentle shaping to preserve gas pockets.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How does Khorasan or Kamut flour affect sourdough bread?",
+            "What hydration does Kamut flour require in sourdough baking?",
+            "Why is sourdough made with Kamut flour so yellow and buttery?",
+            "Can I bake with 50% Kamut flour in my sourdough loaf?",
+            "How does Kamut gluten differ from standard bread flour?",
+        ],
+        "answers": [
+            "Khorasan (Kamut) is an ancient durum relative that contributes a rich golden yellow hue, sweet buttery taste, and high protein content. Its gluten is smooth and extensible, yielding supple, tender loaves.",
+            "Blend 20% to 40% Kamut with high-protein white flour. Kamut tolerates high hydration (76% to 80%) well, developing generous oven spring and a soft, custardy crumb when shaped with firm surface tension.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How do I make high-hydration sourdough pizza dough?",
+            "What is the ideal hydration and levain percentage for sourdough pizza?",
+            "How long should sourdough pizza dough balls ferment in the fridge?",
+            "How do I stretch sourdough pizza dough without tearing the center?",
+            "What flour is best for sourdough Neapolitan pizza crust?",
+        ],
+        "answers": [
+            "Formulate with 65% to 70% hydration using Italian Tipo 00 or strong bread flour, 10% to 15% levain, and 2.5% sea salt. Bulk ferment to 50% rise, divide into 250g balls, and cold retard for 24 to 48 hours.",
+            "Cold retarding relaxes gluten and develops deep flavor. Stretch on a semolina-dusted counter by pressing gently from center outward to push air bubbles into the outer cornicione rim, then bake at maximum heat.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How do I bake an open, airy sourdough focaccia?",
+            "What hydration should I use for sourdough focaccia dough?",
+            "How do I get dramatic bubble dimples in sourdough focaccia?",
+            "When should I add olive oil and brine to sourdough focaccia?",
+            "Why is my sourdough focaccia flat and dense instead of bubbly?",
+        ],
+        "answers": [
+            "Use 80% to 85% hydration with strong flour and incorporate 5% extra virgin olive oil toward the end of mixing. Ferment until bubbly, proof in an oiled metal pan until jiggly, dimple with oiled fingertips, and finish with flaky sea salt.",
+            "High hydration and thorough second-stage proofing produce large gas pockets. Pour a light salt brine over the dough before dimpling to preserve bubble moisture and crisp the golden crust.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How do I make rich sourdough brioche with butter and eggs?",
+            "When do I incorporate softened butter into sourdough brioche dough?",
+            "Can wild sourdough yeast leaven heavily enriched butter doughs?",
+            "Why does sourdough brioche require a stiff sweet levain?",
+            "How do I handle soft buttery sourdough brioche dough during shaping?",
+        ],
+        "answers": [
+            "Fully develop strong gluten with flour, eggs, milk, sugar, and active sweet levain before adding softened butter. Incorporate butter in small batches so fat does not coat flour particles and impede gluten bonds.",
+            "Use a low-acid stiff levain fed multiple times to avoid sourness in enriched bread. Chill the fermented dough overnight in the refrigerator to firm the butter for easy rolling and braided shaping.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How do I bake a soft sourdough sandwich loaf in a pullman pan?",
+            "Can I bake sourdough sandwich bread in a lidded pullman tin?",
+            "How do I achieve a soft, sliceable crumb in sourdough bread?",
+            "What ingredients make sourdough sandwich bread tender and squarish?",
+            "How high should sourdough rise in a pullman loaf pan before baking?",
+        ],
+        "answers": [
+            "Enrich dough with 5% to 8% butter, milk, and honey, maintaining 68% to 72% hydration. Proof in a greased pullman pan until dough reaches 1 inch below the rim, then slide the lid on and bake at 375°F (190°C).",
+            "Fats and milk sugars tenderize the gluten matrix and soften the crust. Baking in a closed pullman pan traps steam, yielding perfectly square sandwich slices with uniform crumb.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How do I make sourdough cinnamon rolls without sourness?",
+            "How do I schedule sourdough cinnamon rolls for morning baking?",
+            "Why use a sweet stiff levain for sourdough cinnamon rolls?",
+            "How do I roll and cut sourdough cinnamon roll dough cleanly?",
+            "Can I proof sourdough cinnamon rolls overnight in the refrigerator?",
+        ],
+        "answers": [
+            "Use a stiff levain enriched with sugar to suppress acetic acid bacteria. Roll out cold enriched dough into a rectangle, spread butter, brown sugar, and cinnamon, slice into pinwheels with unflavored dental floss, and proof overnight.",
+            "Cold overnight retarding allows morning baking straight from the fridge at 350°F (175°C). Glaze with cream cheese icing while warm for bakery-style tenderness.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "What is stitching technique when shaping sourdough batards?",
+            "How do I stitch high-hydration dough in a banneton basket?",
+            "Why stitch the seams of sourdough bread after placing in the banneton?",
+            "How does stitching improve surface tension and oven spring?",
+            "My batard spreads flat; can stitching in the banneton fix it?",
+        ],
+        "answers": [
+            "After transferring shaped batards seam-up into dusted bannetons, allow dough to relax for 10 minutes, then pull opposing edge flaps across the centerline like lacing shoes to tighten the skin.",
+            "Stitching creates supplemental surface tension on wet, slack doughs. It locks in lateral seams and focuses oven spring upward into a pronounced ear rather than spreading sideways.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How do I use semolina or durum flour in sourdough bread?",
+            "What does finely ground semola rimacinata do to sourdough crumb?",
+            "Can I bake a 100% durum semolina sourdough loaf?",
+            "Why does semolina sourdough have a golden yellow crumb and chewy texture?",
+            "How much water does durum semolina absorb in sourdough?",
+        ],
+        "answers": [
+            "Semola rimacinata (remilled durum wheat) produces an amber-yellow crumb, sweet nutty flavor, and a blistered, crunchy crust. It absorbs water generously and provides firm, toothsome chew.",
+            "Blend 20% to 50% semola rimacinata with unbleached bread flour. Durum contains high gliadin for extensibility; autolyse for 45 minutes to fully hydrate starch and maximize loaf volume.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "Is a Challenger bread pan better than a cast iron Dutch oven?",
+            "What are the advantages of baking sourdough in a Challenger pan?",
+            "Why use a low-profile flat base pan for sourdough batards?",
+            "Does a Challenger bread pan create better ears and blisters?",
+            "How do I load dough safely into a Challenger bread pan?",
+        ],
+        "answers": [
+            "A Challenger bread pan features a shallow flat base and high vaulted dome lid, allowing bakers to load and score long batards easily without risking wrist burns against deep Dutch oven sidewalls.",
+            "Its heavy cast iron mass holds substantial thermal energy, sealing in moisture from ice cubes or evaporating dough to produce explosive oven spring, crisp blisters, and dramatic ears.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "Should I use a baking steel or a baking stone for sourdough bread?",
+            "Why does a baking steel give superior oven spring compared to ceramic stone?",
+            "What thickness of baking steel is best for home bread baking?",
+            "Can a baking stone crack when using ice cubes for steam?",
+            "How do I preheat a baking steel for open baking sourdough?",
+        ],
+        "answers": [
+            "A 1/4-inch or 3/8-inch baking steel conducts heat roughly 18 times faster than refractory ceramic stone, delivering instant bottom heat to dough for explosive oven spring and dark blistered crust.",
+            "Steels are impervious to thermal shock from water sprays or ice cubes, unlike stones which can fracture. Preheat your steel for 45 to 60 minutes at 475°F (245°C) before loading loaves.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "How do I create steam for open baking sourdough on a steel?",
+            "How do I use lava rocks in a cast iron skillet for oven steam?",
+            "What is the best steam setup for baking sourdough without a Dutch oven?",
+            "When should I remove steam trays during open bread baking?",
+            "How much boiling water should I pour on lava rocks for steam?",
+        ],
+        "answers": [
+            "Preheat a cast iron skillet filled with volcanic lava rocks on the lowest oven rack. When loading loaves onto the baking steel, pour 1 cup of boiling water over the rocks to trigger immediate, dense steam.",
+            "Maintain steam for the first 20 minutes to prevent premature crust gelatinization, then remove the lava rock skillet to vent moisture and allow the crust to brown and crisp deeply.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "How do I get micro-blisters on my sourdough bread crust?",
+            "What causes fine blisters all over the surface of sourdough loaves?",
+            "Why does a long cold retard produce blistered sourdough crust?",
+            "Does spraying water or using ice cubes create crust blisters?",
+            "Why did my sourdough bread bake without any blisters?",
+        ],
+        "answers": [
+            "Micro-blisters form when cold-retarded dough has surface starches gelatinized by intense trapped steam during the initial 10 to 15 minutes of baking. A 16 to 24 hour cold retard at 38°F (3°C) promotes blister creation.",
+            "Dropping an ice cube into your Dutch oven or spritzing the chilled loaf with water right before covering intensifies steam contact, producing hundreds of tiny golden blisters.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "Why is my sourdough bread crust pale and dull after baking?",
+            "What causes a blonde or white crust on sourdough bread?",
+            "Why won't my sourdough loaf brown even after 45 minutes in the oven?",
+            "Does over-fermentation cause a pale sourdough crust?",
+            "How does residual sugar affect sourdough crust browning?",
+        ],
+        "answers": [
+            "A pale, dull crust is the primary indicator of over-fermentation: wild yeasts and bacteria have consumed virtually all available maltose and fructose, leaving no residual sugars for Maillard browning and caramelization.",
+            "Baking at too low a temperature or failing to remove the Dutch oven lid can also inhibit browning. If dough is over-proofed, crust remains light blonde despite prolonged baking.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "How do I use an inverted roasting pan to steam sourdough bread?",
+            "Can I cover sourdough loaves on a baking steel with an upside-down pan?",
+            "What is the inverted aluminum roasting pan method for bread?",
+            "How do I capture steam on a baking steel with a roasting pan?",
+            "When do I remove the roasting pan during an open bake?",
+        ],
+        "answers": [
+            "Slide scored dough onto your preheated baking steel and immediately invert a deep stainless steel or aluminum roasting pan over the loaf. The pan traps escaping moisture to recreate Dutch oven steam conditions.",
+            "Keep the inverted pan over the loaf for the first 20 minutes to allow maximum oven spring, then remove the pan to ventilate the oven and brown the crust for the remaining 20 minutes.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "What is the best flour to dust a banneton to prevent sticking?",
+            "Why do bakers use rice flour instead of wheat flour for proofing baskets?",
+            "Can I dust bannetons with semolina or cornstarch?",
+            "My sourdough dough stuck to the cane banneton; how do I prevent this?",
+            "What is the ideal ratio of rice flour to semolina for banneton dusting?",
+        ],
+        "answers": [
+            "White rice flour contains no gluten and absorbs moisture slowly, so it will not hydrate and fuse to wet dough, ensuring clean, effortless release from cane bannetons.",
+            "A 50/50 blend of white rice flour and semolina flour provides reliable non-stick release while imparting a crisp, attractive golden texture to the baked crust.",
+        ],
+    },
+    {
+        "category": "bakers_math",
+        "questions": [
+            "How do I calculate baker's percentages for a multi-flour sourdough blend?",
+            "In baker's math with three flours, what is the 100% base?",
+            "How do I formulate a flour mix of bread flour, whole wheat, and rye?",
+            "How do baker's percentages work when using multiple flours?",
+            "Calculating water and salt percentages with a blend of flours.",
+        ],
+        "answers": [
+            "In baker's percentages, total flour weight is always 100%. For example, in a 500g loaf with 350g bread flour (70%), 100g whole wheat (20%), and 50g rye (10%), all three sum to 500g total flour.",
+            "Water, levain, and salt percentages are calculated relative to that 500g total flour base. At 75% hydration, 500g flour requires 375g water, and 2% salt requires 10g salt.",
+        ],
+    },
+    {
+        "category": "bakers_math",
+        "questions": [
+            "How do I calculate total sourdough hydration with milk, eggs, or oil?",
+            "Does olive oil or butter count toward hydration in baker's math?",
+            "What is the water content of whole milk and eggs in bread dough?",
+            "How to adjust sourdough hydration when substituting milk for water?",
+            "Why is dough with 75% hydration and olive oil so slack?",
+        ],
+        "answers": [
+            "Whole milk is approximately 87% water, while whole eggs are roughly 74% water. Pure fats like butter (80% fat, 16% water) and olive oil (100% fat) tenderize and relax gluten rather than contributing to true water hydration.",
+            "When replacing water with whole milk, increase liquid weight by about 13% to account for milk solids, ensuring the dough maintains its target hydration level.",
+        ],
+    },
+    {
+        "category": "bakers_math",
+        "questions": [
+            "How do I convert a sourdough recipe from 100% liquid levain to 50% stiff levain?",
+            "How does switching to a stiff starter affect recipe water and flour?",
+            "Converting liquid starter to stiff pasta madre in baker's math.",
+            "How do I balance dough hydration when using a stiff starter?",
+            "Formula for converting 100% hydration levain to 50% hydration levain.",
+        ],
+        "answers": [
+            "A 100g 100% levain contains 50g flour and 50g water. A 100g 50% stiff levain contains 67g flour and 33g water. To maintain identical total recipe hydration, add 17g water and subtract 17g flour from the main dough.",
+            "When switching between starter hydrations, adjust the autolyse water and flour to keep total recipe water and flour constant across the entire formulation.",
+        ],
+    },
+    {
+        "category": "bakers_math",
+        "questions": [
+            "How much levain should I use in hot summer versus cold winter?",
+            "Should I adjust sourdough starter percentage based on kitchen temperature?",
+            "What levain percentage is best for an 8-hour overnight bulk fermentation?",
+            "How does levain inoculation percentage affect fermentation rate?",
+            "Can I reduce levain to 5% for slow ambient sourdough fermentation?",
+        ],
+        "answers": [
+            "Use 10% to 12% levain in hot summer kitchens (80°F to 85°F / 27°C to 29°C) to prevent rapid over-fermentation, and increase to 20% to 25% levain in cold winter rooms (65°F to 68°F / 18°C to 20°C).",
+            "For extended 8 to 12 hour ambient bulk fermentation at room temperature, reduce levain inoculation to 5% to 8% to prevent premature gluten degradation.",
+        ],
+    },
+
+# =========================================================================
     # 6. Guardrails & Out-of-Domain Refusals (12 topics)
     # =========================================================================
     {

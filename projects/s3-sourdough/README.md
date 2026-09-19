@@ -258,23 +258,23 @@ task test-device
 
 ### Performance & Scaling Comparison Across Benchmark Runs (ESP32-S3 @ 240 MHz)
 
-| Parameter / Metric | Run 1: Baseline (4L, $D=128$) | Run 2: Configured (4L, $D=128$) | Run 3: Scaled (6L, $D=160$) | Run 4: Optimized Default (6L, SIMD Full Head) | Sub-Vocab Mode (6L, SIMD+SubVocab) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Model Size (INT4)** | ~2.5 MB | ~2.5 MB | 3.87 MB | 3.87 MB | 3.87 MB |
-| **Layers ($L$)** | 4 | 4 | 6 | 6 | 6 |
-| **Hidden Dim ($D$)** | 128 | 128 | 160 | 160 | 160 |
-| **FFN Dim ($D_{ffn}$)** | 351 | 351 | 448 | 448 | 448 |
-| **Attention Heads** | 4 | 4 | 4 | 4 | 4 |
-| **Vocabulary Size** | 4096 (5655 PLE total) | 4096 (5655 PLE total) | 4096 (5796 PLE total) | 4096 (5796 PLE total) | 4096 (5796 PLE total) |
-| **Output Head Method** | Full head (1,737 classes) | Full head (1,737 classes) | Full head (1,882 classes) | **Full head (1,882 classes, 100% exact)** | **Sub-Vocab (top 4/16 clusters, ~233 classes)** |
-| **SIMD Vector Engine** | Scalar C-loop | Scalar C-loop | Scalar C-loop | **ESP32-S3 PIE 128-bit SIMD (`ee.vmulas.s8`)** | **ESP32-S3 PIE 128-bit SIMD (`ee.vmulas.s8`)** |
-| **Staged PSRAM Tensors** | 30 | 30 | 44 | 44 | 44 |
-| **Free SRAM** | 320.7 KB | 320.7 KB | 310.5 KB | 306.4 KB | 306.4 KB |
-| **Free PSRAM** | 6.28 MB | 6.28 MB | 4.49 MB | 4.47 MB | 4.47 MB |
-| **Sampling Mode** | Greedy (argmax) | Top-$p$ ($p=0.9, T=0.75$) | Top-$p$ ($p=0.9, T=0.75$, rep=32) | Top-$p$ ($p=0.9, T=0.75$, rep=32) | Top-$p$ ($p=0.9, T=0.75$, rep=32) |
-| **Average Throughput** | **14.1 tok/s** (71 ms/tok) | **12.9 tok/s** (77.5 ms/tok) | **6.6 tok/s** (151.5 ms/tok) | **14.5 tok/s** (69.2 ms/tok) | **16.5 tok/s** (60.6 ms/tok) |
-| **Generation Fidelity** | High | High | High (flawless domain accuracy) | **High (flawless domain accuracy)** | Experimental (coherence trade-off) |
-| **Speedup vs Run 3** | — | — | Baseline (1.00×) | **+119.7% (2.20× speedup)** | **+150.0% (2.50× speedup)** |
+| Parameter / Metric | Run 1: Baseline (4L, $D=128$) | Run 2: Configured (4L, $D=128$) | Run 3: Scaled (6L, $D=160$) | Run 4: Optimized Default (6L, SIMD Full Head) | Run 5: Expanded Vocab (6L, SIMD Full Head) | Sub-Vocab Mode (6L, SIMD+SubVocab) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Model Size (INT4)** | ~2.5 MB | ~2.5 MB | 3.87 MB | 3.95 MB | 3.95 MB | 3.87 MB |
+| **Layers ($L$)** | 4 | 4 | 6 | 6 | 6 | 6 |
+| **Hidden Dim ($D$)** | 128 | 128 | 160 | 160 | 160 | 160 |
+| **FFN Dim ($D_{ffn}$)** | 351 | 351 | 448 | 448 | 448 | 448 |
+| **Attention Heads** | 4 | 4 | 4 | 4 | 4 | 4 |
+| **Vocabulary Size** | 4096 (5655 PLE total) | 4096 (5655 PLE total) | 4096 (5796 PLE total) | 4096 (5796 PLE total) | **4096 (6106 PLE total)** | 4096 (5796 PLE total) |
+| **Output Head Method** | Full head (1,737 classes) | Full head (1,737 classes) | Full head (1,882 classes) | **Full head (1,882 classes, 100% exact)** | **Full head (2,197 classes, +315 words)** | **Sub-Vocab (top 4/16 clusters, ~233 classes)** |
+| **SIMD Vector Engine** | Scalar C-loop | Scalar C-loop | Scalar C-loop | **ESP32-S3 PIE 128-bit SIMD (`ee.vmulas.s8`)** | **ESP32-S3 PIE 128-bit SIMD (`ee.vmulas.s8`)** | **ESP32-S3 PIE 128-bit SIMD (`ee.vmulas.s8`)** |
+| **Staged PSRAM Tensors** | 30 | 30 | 44 | 44 | 44 | 44 |
+| **Free SRAM** | 320.7 KB | 320.7 KB | 310.5 KB | 306.4 KB | 306.4 KB | 306.4 KB |
+| **Free PSRAM** | 6.28 MB | 6.28 MB | 4.49 MB | 4.47 MB | **4.41 MB** | 4.47 MB |
+| **Sampling Mode** | Greedy (argmax) | Top-$p$ ($p=0.9, T=0.75$) | Top-$p$ ($p=0.9, T=0.75$, rep=32) | Top-$p$ ($p=0.9, T=0.75$, rep=32) | Top-$p$ ($p=0.9, T=0.75$, rep=32) | Top-$p$ ($p=0.9, T=0.75$, rep=32) |
+| **Average Throughput** | **14.1 tok/s** (71 ms/tok) | **12.9 tok/s** (77.5 ms/tok) | **6.6 tok/s** (151.5 ms/tok) | **14.5 tok/s** (69.2 ms/tok) | **13.9 tok/s** (72.1 ms/tok) | **16.5 tok/s** (60.6 ms/tok) |
+| **Generation Fidelity** | High | High | High (flawless domain accuracy) | **High (flawless domain accuracy)** | **High (+315 expanded baking classes)** | Experimental (coherence trade-off) |
+| **Speedup vs Run 3** | — | — | Baseline (1.00×) | **+119.7% (2.20× speedup)** | **+110.6% (2.11× speedup)** | **+150.0% (2.50× speedup)** |
 
 ---
 

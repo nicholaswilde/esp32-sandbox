@@ -108,8 +108,8 @@ def run_checks(vocab_size: int = 2048, seq_len: int = 128):
 
         with open(asym_layout) as f:
             layout_data = json.load(f)
-        total_vocab = layout_data.get("total_vocab", 5796)
-        n_words = layout_data.get("n_words", 1882)
+        total_vocab = layout_data.get("total", layout_data.get("total_vocab", 6106))
+        n_words = layout_data.get("n_words", 2197)
 
         train_max_x = max(d["x"].max().item() for d in train_data)
         train_max_y = max(d["y"].max().item() for d in train_data)
