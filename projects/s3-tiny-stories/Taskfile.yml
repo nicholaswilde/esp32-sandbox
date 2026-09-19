@@ -100,6 +100,11 @@ tasks:
     cmds:
       - uv run python patch_colab_cli.py
 
+  verify-size:
+    desc: Verify model binary size and memory budget for ESP32-S3-DevKitC-1-N16R8
+    cmds:
+      - uv run python ../../.agents/skills/verify-model-size/scripts/verify_model_size.py {{.CLI_ARGS}}
+
   upload-model:
     desc: Upload model binary and tokenizer to Hugging Face Hub
     cmds:

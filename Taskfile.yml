@@ -100,6 +100,11 @@ tasks:
     cmds:
       - uv run python upload_model_hf.py --path {{.MODEL_PATH}} {{.CLI_ARGS}}
 
+  verify:s3-tiny-stories:
+    desc: Verify model binary size and memory budget for ESP32-S3-DevKitC-1-N16R8
+    cmds:
+      - uv run python .agents/skills/verify-model-size/scripts/verify_model_size.py {{.CLI_ARGS}}
+
   build:s3-sourdough:
     desc: Build the s3-sourdough sandbox project
     dir: projects/s3-sourdough

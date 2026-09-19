@@ -199,6 +199,13 @@ When searching for patterns or text in the codebase via the shell, always use `r
 ## :electric_plug: Hardware & Pinouts
 - **Always read `docs/pinouts.md`** before writing hardware-specific code, initializing new GPIO pins, or writing wiring instructions. This file acts as the single source of truth to prevent pin collisions.
 
+## :floppy_disk: S3 Model Sizing & Device Constraints
+- **Target Device**: ESP32-S3-DevKitC-1-N16R8 (16MB Flash, 8MB Octal PSRAM).
+- When modifying, training, or exporting models for S3 projects (`s3-tiny-stories`, `s3-sourdough`), the compiled model binary (`model.bin` / `*.bin`) **must strictly fit on the target device**:
+  - **Flash Partition**: File size must not exceed the `model` partition (`0xEE0000` = 15,597,568 bytes / ~14.88 MB at `0x110000` defined in `partitions.csv`).
+  - **PSRAM Footprint**: Staged INT8 weights, KV cache, and runtime buffers must fit within the 8MB PSRAM budget with sufficient margin for heap allocations.
+  - **Verification**: Always verify `.bin` byte size and memory budget before proposing or committing new model exports.
+
 ## Python Dependencies & Tooling
 - When creating or running Python scripts, **always use the `uv` command** (e.g., `uv run`, `uv add`).
 - Manage all Python dependencies by creating or updating a `pyproject.toml` file.
