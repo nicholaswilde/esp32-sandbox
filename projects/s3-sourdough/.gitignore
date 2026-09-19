@@ -18,3 +18,4 @@ runs/
 # Temporary Payload Archives & Logs
 *.tar.gz
 *.log
+src/secrets.h

@@ -1,5 +1,6 @@
 // ESP32-S3 Sourdough Baker Assistant - On-Device PLE INT4 Inference REPL
 // Runs offline on ESP32-S3 (N16R8) with model memory-mapped at partition 0x110000.
+// Exposes OpenAI-compatible HTTP API on port 8080 for Open WebUI / curl access.
 
 #include <Arduino.h>
 #include "esp_partition.h"
@@ -17,6 +18,21 @@
 #include "generated/sourdough_words.h"
 #include "generated/sourdough_out2in.h"
 #include "generated/sourdough_subvocab.h"
+
+// ---- WiFi / HTTP Server -----------------------------------------------------
+#include <WiFi.h>
+#include <WebServer.h>
+#include <ArduinoJson.h>
+#if __has_include("secrets.h")
+#  include "secrets.h"
+#else
+#  define WIFI_SSID     "your_wifi_network"
+#  define WIFI_PASSWORD "your_wifi_password"
+#endif
+
+static WebServer http_server(8080);
+static bool wifi_connected = false;
+static void setup_http_routes();  // forward declaration
 
 // ---- Globals & Buffers -----------------------------------------------------
 static Model model;
@@ -200,6 +216,15 @@ static void emit_word(int best, int &pieces_out) {
   if (pieces_out && !punct) Serial.print(' ');
   Serial.print(w);
   Serial.flush();
+  pieces_out++;
+}
+
+static void emit_word_buf(int best, int &pieces_out, String &buf) {
+  if (best < 0 || best >= SOURDOUGH_WORD_COUNT) return;
+  const char *w = SOURDOUGH_WORDS[best];
+  bool punct = (w[1] == '\0' && strchr(".,:;?%", w[0]) != NULL);
+  if (pieces_out && !punct) buf += ' ';
+  buf += w;
   pieces_out++;
 }
 
@@ -393,11 +418,175 @@ void setup() {
 #else
   Serial.println("[s3-sourdough] SIMD: Scalar fallback");
 #endif
+  // 7. Start WiFi + HTTP server
+  Serial.printf("[s3-sourdough] WiFi: connecting to \"%s\"...\n", WIFI_SSID);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  int tries = 0;
+  while (WiFi.status() != WL_CONNECTED && tries < 20) {
+    delay(500);
+    Serial.print('.');
+    tries++;
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    wifi_connected = true;
+    Serial.printf("\n[s3-sourdough] WiFi: connected, IP=%s\n", WiFi.localIP().toString().c_str());
+    Serial.printf("[s3-sourdough] HTTP: OpenAI API at http://%s:8080/v1/chat/completions\n",
+                  WiFi.localIP().toString().c_str());
+    setup_http_routes();
+    http_server.begin();
+  } else {
+    Serial.println("\n[s3-sourdough] WiFi: offline – HTTP server disabled, Serial REPL only.");
+  }
+
   Serial.println("\nReady! Enter your sourdough question below:\n");
   Serial.print("User: ");
 }
 
+// ---- Shared inference: fills 'out' with the assistant's answer ---------------
+static void run_inference_to_buf(const String &prompt, String &out, int &n_tokens, float &tok_per_sec) {
+  uint16_t prompt_tokens[128];
+  int n_prompt = bpe_encode_ascii(&tokenizer, prompt.c_str(), prompt_tokens, 120);
+  if (n_prompt < 0) {
+    out = "Error: prompt contains unsupported characters or is too long.";
+    n_tokens = 0; tok_per_sec = 0.0f;
+    return;
+  }
+
+  llm_profile_reset(&s);
+  int pos = 0;
+  for (int i = 0; i < n_prompt; i++) llm_forward(&model, prompt_tokens[i], pos++, &s);
+  llm_forward(&model, SOURDOUGH_OUT2IN[SOURDOUGH_BOS], pos++, &s);
+
+  int64_t t0 = esp_timer_get_time();
+  int pieces_out = 0;
+  int max_pieces = 60;
+  int recent[RECENT_WINDOW];
+  for (int i = 0; i < RECENT_WINDOW; i++) recent[i] = -1;
+
+  for (int step = 0; step < max_pieces && pos < model.c.seq_len; step++) {
+    s.logits[SOURDOUGH_PAD] = -1e30f;
+    s.logits[SOURDOUGH_BOS] = -1e30f;
+    s.logits[SOURDOUGH_UNK] -= 10.0f;
+
+    for (int d = 1; d <= RECENT_WINDOW && d <= step; d++) {
+      int idx = (step - d + RECENT_WINDOW) % RECENT_WINDOW;
+      int prev = recent[idx];
+      if (prev >= 0 && prev < SOURDOUGH_WORD_COUNT) {
+        float factor = 0.80f + 0.15f * ((float)(d - 1) / (float)RECENT_WINDOW);
+        if (s.logits[prev] > 0) s.logits[prev] *= factor;
+        else s.logits[prev] *= (2.0f - factor);
+      }
+    }
+
+    if (step >= max_pieces - 10) {
+      float boost = (float)(step - (max_pieces - 10) + 1) * 1.5f;
+      s.logits[SOURDOUGH_EOS] += boost;
+      s.logits[5] += boost * 0.5f;
+    }
+
+    int best = sample(s.logits, SOURDOUGH_WORD_COUNT, g_temperature, g_topp, probindex);
+    if (best == SOURDOUGH_EOS) break;
+
+    recent[step % RECENT_WINDOW] = best;
+    emit_word_buf(best, pieces_out, out);
+
+    if (step >= max_pieces - 8 && (best == 5 || best == 8)) break;
+
+    llm_forward(&model, SOURDOUGH_OUT2IN[best], pos++, &s);
+  }
+
+  int64_t total_us = esp_timer_get_time() - t0;
+  n_tokens = pieces_out;
+  tok_per_sec = (total_us > 0) ? (pieces_out * 1e6f / total_us) : 0.0f;
+}
+
+// ---- HTTP Handlers ----------------------------------------------------------
+
+// GET /v1/models
+static void handle_models() {
+  JsonDocument doc;
+  doc["object"] = "list";
+  JsonArray data = doc["data"].to<JsonArray>();
+  JsonObject m = data.add<JsonObject>();
+  m["id"]       = "esp32-sourdough";
+  m["object"]   = "model";
+  m["owned_by"] = "esp32-s3";
+  String body;
+  serializeJson(doc, body);
+  http_server.send(200, "application/json", body);
+}
+
+// POST /v1/chat/completions
+static void handle_chat_completions() {
+  if (!http_server.hasArg("plain")) {
+    http_server.send(400, "application/json", "{\"error\":\"no body\"}");
+    return;
+  }
+
+  JsonDocument req;
+  DeserializationError err = deserializeJson(req, http_server.arg("plain"));
+  if (err) {
+    http_server.send(400, "application/json", "{\"error\":\"invalid json\"}");
+    return;
+  }
+
+  // Extract last user message from messages array
+  String prompt;
+  for (JsonObject msg : req["messages"].as<JsonArray>()) {
+    if (String(msg["role"].as<const char *>()) == "user") {
+      prompt = msg["content"].as<const char *>();
+    }
+  }
+  if (prompt.isEmpty()) {
+    http_server.send(400, "application/json", "{\"error\":\"no user message\"}");
+    return;
+  }
+
+  Serial.printf("[HTTP] Question: %s\n", prompt.c_str());
+
+  String answer;
+  int n_tokens = 0;
+  float tok_per_sec = 0.0f;
+  run_inference_to_buf(prompt, answer, n_tokens, tok_per_sec);
+
+  Serial.printf("[HTTP] Answer (%d words, %.1f words/s): %s\n", n_tokens, tok_per_sec, answer.c_str());
+
+  // Build OpenAI-compatible response
+  JsonDocument resp;
+  resp["id"]     = "chatcmpl-1";
+  resp["object"] = "chat.completion";
+  resp["model"]  = "esp32-sourdough";
+  JsonArray choices = resp["choices"].to<JsonArray>();
+  JsonObject choice = choices.add<JsonObject>();
+  choice["index"]         = 0;
+  choice["finish_reason"] = "stop";
+  JsonObject msg_out = choice["message"].to<JsonObject>();
+  msg_out["role"]    = "assistant";
+  msg_out["content"] = answer;
+  JsonObject usage = resp["usage"].to<JsonObject>();
+  usage["prompt_tokens"]     = (int)prompt.length() / 4;
+  usage["completion_tokens"] = n_tokens;
+  usage["total_tokens"]      = (int)prompt.length() / 4 + n_tokens;
+
+  String body;
+  serializeJson(resp, body);
+  http_server.send(200, "application/json", body);
+}
+
+static void handle_not_found() {
+  http_server.send(404, "application/json", "{\"error\":\"not found\"}");
+}
+
+// ---- Register HTTP routes (called once WiFi is up, at end of setup) ---------
+static void setup_http_routes() {
+  http_server.on("/v1/models", HTTP_GET, handle_models);
+  http_server.on("/v1/chat/completions", HTTP_POST, handle_chat_completions);
+  http_server.onNotFound(handle_not_found);
+}
+
 void loop() {
+  if (wifi_connected) http_server.handleClient();
+
   if (!Serial.available()) {
     delay(20);
     return;
