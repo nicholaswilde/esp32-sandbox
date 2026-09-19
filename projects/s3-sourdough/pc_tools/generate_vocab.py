@@ -5,10 +5,19 @@ import json
 import re
 from pathlib import Path
 
+import shutil
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-TOK_PATH = PROJECT_ROOT / "pc_tools" / "tokenizer.json"
+DATA_TOK = PROJECT_ROOT / "data" / "sourdough" / "tokenizer.json"
+PC_TOK = PROJECT_ROOT / "pc_tools" / "tokenizer.json"
 OUT_DIR = PROJECT_ROOT / "src" / "generated"
 OUT_PATH = OUT_DIR / "vocab.h"
+
+if DATA_TOK.exists():
+    TOK_PATH = DATA_TOK
+    shutil.copy2(DATA_TOK, PC_TOK)
+else:
+    TOK_PATH = PC_TOK
 
 with open(TOK_PATH, "r", encoding="utf-8") as f:
     t = json.load(f)

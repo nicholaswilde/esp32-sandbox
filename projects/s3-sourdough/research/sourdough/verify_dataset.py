@@ -30,14 +30,21 @@ DATA_ROOT = PROJECT_ROOT / "data" / "sourdough"
 
 def run_checks(vocab_size: int = 2048, seq_len: int = 128):
     qa_file = DATA_ROOT / "raw" / "sourdough_qa.jsonl"
-    tok_file = DATA_ROOT / f"vocab-{vocab_size}" / "tokenizer.json"
+    asym_train = DATA_ROOT / "asymmetric" / "train.pt"
+    asym_val = DATA_ROOT / "asymmetric" / "val.pt"
+    asym_tok = DATA_ROOT / "tokenizer.json"
+    asym_vocab = DATA_ROOT / "vocab.json"
+    asym_layout = DATA_ROOT / "layout.json"
+    is_asymmetric = asym_train.exists() and asym_tok.exists() and asym_vocab.exists()
+
+    tok_file = asym_tok if is_asymmetric else DATA_ROOT / f"vocab-{vocab_size}" / "tokenizer.json"
     train_bin = DATA_ROOT / f"vocab-{vocab_size}" / "train.bin"
     val_bin = DATA_ROOT / f"vocab-{vocab_size}" / "val.bin"
 
     if not qa_file.exists():
         print(f"Error: {qa_file} not found. Run 'task generate' first.")
         return False
-    if not tok_file.exists() or not train_bin.exists():
+    if not is_asymmetric and (not tok_file.exists() or not train_bin.exists()):
         print(f"Error: Tokenizer or bin files not found in {DATA_ROOT / f'vocab-{vocab_size}'}. Run 'task prepare' first.")
         return False
 
@@ -92,23 +99,59 @@ def run_checks(vocab_size: int = 2048, seq_len: int = 128):
         pct = (count / len(records)) * 100
         print(f"  - {cat:<22}: {count:5d} ({pct:5.1f}%)")
 
-    # Binary bin validation
-    print("\n--- Binary Token Bins ---")
-    train_tokens = np.fromfile(train_bin, dtype=np.uint16)
-    val_tokens = np.fromfile(val_bin, dtype=np.uint16)
+    if is_asymmetric:
+        import torch
 
-    print(f"  train.bin: {len(train_tokens):,} tokens ({train_bin.stat().st_size:,} bytes)")
-    print(f"             ID range: [{train_tokens.min()}, {train_tokens.max()}] (limit: < {vocab_size})")
-    print(f"  val.bin:   {len(val_tokens):,} tokens ({val_bin.stat().st_size:,} bytes)")
-    print(f"             ID range: [{val_tokens.min()}, {val_tokens.max()}] (limit: < {vocab_size})")
+        print("\n--- Asymmetric Dataset Tensors ---")
+        train_data = torch.load(asym_train, weights_only=False)
+        val_data = torch.load(asym_val, weights_only=False)
 
-    all_passed = (
-        exceeds == 0
-        and roundtrip_errors == 0
-        and len(leakage) == 0
-        and train_tokens.max() < vocab_size
-        and val_tokens.max() < vocab_size
-    )
+        with open(asym_layout) as f:
+            layout_data = json.load(f)
+        total_vocab = layout_data.get("total_vocab", 5796)
+        n_words = layout_data.get("n_words", 1882)
+
+        train_max_x = max(d["x"].max().item() for d in train_data)
+        train_max_y = max(d["y"].max().item() for d in train_data)
+        val_max_x = max(d["x"].max().item() for d in val_data)
+        val_max_y = max(d["y"].max().item() for d in val_data)
+
+        train_max_len = max(len(d["x"]) for d in train_data)
+        val_max_len = max(len(d["x"]) for d in val_data)
+
+        print(f"  train.pt:  {len(train_data):,} samples (max len: {train_max_len})")
+        print(f"             Input ID max: {train_max_x} (< {total_vocab}), Target ID max: {train_max_y} (< {n_words})")
+        print(f"  val.pt:    {len(val_data):,} samples (max len: {val_max_len})")
+        print(f"             Input ID max: {val_max_x} (< {total_vocab}), Target ID max: {val_max_y} (< {n_words})")
+
+        all_passed = (
+            exceeds == 0
+            and roundtrip_errors == 0
+            and len(leakage) == 0
+            and train_max_len <= seq_len
+            and val_max_len <= seq_len
+            and train_max_x < total_vocab
+            and train_max_y < n_words
+            and val_max_x < total_vocab
+            and val_max_y < n_words
+        )
+    else:
+        print("\n--- Binary Token Bins ---")
+        train_tokens = np.fromfile(train_bin, dtype=np.uint16)
+        val_tokens = np.fromfile(val_bin, dtype=np.uint16)
+
+        print(f"  train.bin: {len(train_tokens):,} tokens ({train_bin.stat().st_size:,} bytes)")
+        print(f"             ID range: [{train_tokens.min()}, {train_tokens.max()}] (limit: < {vocab_size})")
+        print(f"  val.bin:   {len(val_tokens):,} tokens ({val_bin.stat().st_size:,} bytes)")
+        print(f"             ID range: [{val_tokens.min()}, {val_tokens.max()}] (limit: < {vocab_size})")
+
+        all_passed = (
+            exceeds == 0
+            and roundtrip_errors == 0
+            and len(leakage) == 0
+            and train_tokens.max() < vocab_size
+            and val_tokens.max() < vocab_size
+        )
 
     if all_passed:
         print("\n✓ ALL DATASET INTEGRITY CHECKS PASSED!")
