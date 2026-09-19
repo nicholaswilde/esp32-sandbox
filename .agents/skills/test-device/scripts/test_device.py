@@ -108,8 +108,11 @@ def send_query(
     if cleaned.startswith(prompt):
         cleaned = cleaned[len(prompt):].lstrip("\r\n")
 
-    # Extract timing line if present: e.g. [40 tokens in 3.70 s, 10.8 tok/s]
-    timing_match = re.search(r"\[(\d+)\s+tokens?\s+in\s+([\d\.]+)\s+s(?:,\s+([\d\.]+)\s+tok/s)?\]", cleaned)
+    # Extract timing line if present: e.g. [40 tokens in 3.70 s, 10.8 tok/s] or [15 words in 1.42 s, 10.6 words/s]
+    timing_match = re.search(
+        r"\[(\d+)\s+(?:tokens?|words?|pieces?)\s+in\s+([\d\.]+)\s+s(?:,\s+([\d\.]+)\s+(?:tok|words?|pieces?)/s)?\]",
+        cleaned,
+    )
     tokens_count = None
     gen_time = None
     tok_per_sec = None
