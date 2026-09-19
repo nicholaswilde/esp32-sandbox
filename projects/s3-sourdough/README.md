@@ -228,6 +228,17 @@ User:
 
 Simply type your question and press **Enter**.
 
+#### Runtime Sampling Controls
+
+The on-device firmware supports dynamic adjustment of decoding parameters directly from the serial prompt:
+* `/temp <val>`: Set softmax temperature between `0.0` and `2.0` (default: `0.75`).
+* `/topp <val>`: Set nucleus top-p probability threshold between `0.0` and `1.0` (default: `0.90`).
+* `/config`: Inspect active temperature, top-p, and repetition penalty window settings.
+
+In addition, the autoregressive generation loop includes:
+* **Distance-Weighted Repetition Penalty**: Evaluates a rolling 32-token window, applying stronger suppression to recently emitted tokens (`factor = 0.80 + 0.15 * d / 32`).
+* **Adaptive Sentence Wrap-up**: Smoothly boosts `<eos>` and punctuation (`.`, `?`) logits as generation nears the token budget to avoid abruptly truncated sentences.
+
 ---
 
 ## :bar_chart: On-Device Benchmark & Performance

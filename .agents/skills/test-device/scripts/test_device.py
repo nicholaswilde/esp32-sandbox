@@ -161,6 +161,8 @@ def main():
         print(f"Connecting to ESP32 on {port} at {args.baud} baud...")
 
     try:
+        ser = serial.Serial(port, args.baud, timeout=1.0, exclusive=True)
+    except TypeError:
         ser = serial.Serial(port, args.baud, timeout=1.0)
     except Exception as e:
         print(f"Error opening {port}: {e}", file=sys.stderr)
