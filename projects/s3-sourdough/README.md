@@ -78,9 +78,13 @@ task query-dataset QUERY="My dough is too sticky to shape"
 ### 3. Train the Model
 Trains the **Per-Layer Embeddings (PLE)** micro-LLM (~2.3M parameters):
 ```bash
+# Standard training (1,200 steps, ~4.3 epochs)
 task train
+
+# Extended training (2,000 steps, ~7.1 epochs)
+task train-full
 ```
-*   **Speed**: ~2–3 minutes on CPU (or seconds on CUDA GPU).
+*   **Speed**: ~4–6 minutes on CPU (or seconds on CUDA GPU).
 *   **Metrics**: Logs training loss, validation loss, and perplexity (PPL) every 100 steps.
 *   **Checkpoint**: Saved to `runs/sourdough/ple-sourdough-v1-s0.pt`.
 
@@ -129,13 +133,13 @@ For faster cloud GPU training using Google Colab's Free Tier (T4 GPU):
 # Verify authentication
 task colab-auth
 
-# Run standard training (600 steps)
+# Run standard training (1,200 steps)
 task colab-train
 
 # Or run fast smoke test (50 steps)
 task colab-train-test
 
-# Or extended training (1200 steps)
+# Or extended training (2,000 steps)
 task colab-train-full
 ```
 

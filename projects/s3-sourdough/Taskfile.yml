@@ -73,9 +73,14 @@ tasks:
       - uv run python -m research.sourdough.verify_dataset --query "{{.QUERY}}"
 
   train:
-    desc: Train Sourdough PLE micro-LLM with asymmetric vocabulary (600 steps)
+    desc: Train Sourdough PLE micro-LLM with asymmetric vocabulary (1,200 steps)
     cmds:
-      - uv run python -m research.sourdough.train --arm ple --asymmetric --steps 600 --eval-every 100
+      - uv run python -m research.sourdough.train --arm ple --asymmetric --steps 1200 --eval-every 100
+
+  train-full:
+    desc: Extended train Sourdough PLE micro-LLM with asymmetric vocabulary (2,000 steps)
+    cmds:
+      - uv run python -m research.sourdough.train --arm ple --asymmetric --steps 2000 --eval-every 100
 
   sample:
     desc: Query the trained Sourdough model with a prompt (e.g. task sample PROMPT="Why is my bread gummy?")
@@ -129,12 +134,12 @@ tasks:
       - uv run python colab_runner.py build --action train-test
 
   colab-train:
-    desc: Run Sourdough PLE micro-LLM training (600 steps) on Colab VM
+    desc: Run Sourdough PLE micro-LLM training (1,200 steps) on Colab VM
     cmds:
       - uv run python colab_runner.py build --action train
 
   colab-train-full:
-    desc: Run extended Sourdough PLE micro-LLM training (1200 steps) on Colab VM
+    desc: Run extended Sourdough PLE micro-LLM training (2,000 steps) on Colab VM
     cmds:
       - uv run python colab_runner.py build --action train-full
 
