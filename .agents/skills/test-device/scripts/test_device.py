@@ -49,15 +49,22 @@ def reset_device(ser: serial.Serial, delay_s: float = 0.1):
 
 
 def capture_boot_output(ser: serial.Serial, timeout_s: float = 2.5) -> str:
-    """Read serial output until prompt indicator or timeout."""
+    """Read serial output until prompt indicator, completion of autonomous run, or timeout."""
     start_time = time.time()
     boot_log = ""
-    while time.time() - start_time < timeout_s:
+    max_wait = timeout_s
+    while time.time() - start_time < max_wait:
         n = ser.in_waiting
         if n:
             chunk = ser.read(n).decode("utf-8", errors="replace")
             boot_log += chunk
             if "User: " in boot_log or "READY>" in boot_log:
+                break
+            # If LLM model initialization or autonomous generation begins, extend timeout to allow completion
+            if any(k in boot_log for k in (">>>", "=== ESP32-S3", "TinyLM", "Vin=")) and max_wait == timeout_s and timeout_s < 60.0:
+                max_wait = 60.0
+            # Completion marker for autonomous generation
+            if "profile ms/token:" in boot_log or ("throughput:" in boot_log and "\n" in boot_log.split("throughput:")[1]):
                 break
         time.sleep(0.05)
     return boot_log
@@ -167,16 +174,64 @@ def main():
             print(boot_output.strip())
             print("-------------------\n")
 
-    # Default queries if none provided and not in interactive mode
+    results = []
+
+    # Check if the device performed an autonomous generation on boot
+    tiny_timing = re.search(r"throughput:\s+([\d\.]+)\s+tok/s\s+\(([\d\.]+)\s+ms/token\)", boot_output)
+    tiny_total = re.search(r"---\s+(\d+)\s+tokens in\s+([\d\.]+)\s+s\s+---", boot_output)
+
+    if tiny_timing or ">>>" in boot_output:
+        body = boot_output.split(">>>", 1)[1] if ">>>" in boot_output else boot_output
+        if tiny_total:
+            body = re.split(r"---\s+\d+\s+tokens in", body)[0]
+        story = " ".join(l.strip() for l in body.splitlines() if l.strip())
+
+        tokens_count = int(tiny_total.group(1)) if tiny_total else None
+        gen_time = float(tiny_total.group(2)) if tiny_total else None
+        tok_per_sec = float(tiny_timing.group(1)) if tiny_timing else None
+
+        profile_match = re.search(
+            r"profile ms/token:\s+input\s+([\d\.]+)\s+\|\s+attn\s+([\d\.]+)\s+\|\s+ffn\s+([\d\.]+)\s+\|\s+ple\s+([\d\.]+)\s+\|\s+head\s+([\d\.]+)",
+            boot_output,
+        )
+        profile_data = None
+        if profile_match:
+            profile_data = {
+                "input_ms": float(profile_match.group(1)),
+                "attn_ms": float(profile_match.group(2)),
+                "ffn_ms": float(profile_match.group(3)),
+                "ple_ms": float(profile_match.group(4)),
+                "head_ms": float(profile_match.group(5)),
+            }
+
+        res = {
+            "prompt": "<autonomous generation on boot>",
+            "answer": story,
+            "tokens": tokens_count,
+            "time_s": gen_time,
+            "tok_per_sec": tok_per_sec,
+            "profile": profile_data,
+            "raw": boot_output.strip(),
+        }
+        results.append(res)
+
+        if not args.json:
+            print("\nAutonomous Generation Result:")
+            print(f"Generated text: {story}\n")
+            if tokens_count and tok_per_sec:
+                print(f"[{tokens_count} tokens in {gen_time:.2f}s, {tok_per_sec:.2f} tok/s]")
+            if profile_data:
+                print(f"Profile: input {profile_data['input_ms']}ms | attn {profile_data['attn_ms']}ms | ffn {profile_data['ffn_ms']}ms | ple {profile_data['ple_ms']}ms | head {profile_data['head_ms']}ms\n")
+
+    # Queries: run if explicitly passed, or if not interactive and no autonomous results were parsed
     queries = args.query
-    if not queries and not args.interactive:
+    if not queries and not args.interactive and not results:
         queries = [
             "Why is there liquid on top of my sourdough starter?",
             "How do I feed my sourdough starter?",
-            "Why is my bread gummy?"
+            "Why is my bread gummy?",
         ]
 
-    results = []
     if queries:
         for q in queries:
             if not args.json:
