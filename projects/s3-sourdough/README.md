@@ -226,7 +226,32 @@ Assistant: A gummy crumb occurs when bread is sliced while still hot, or if unde
 User: 
 ```
 
-Simply type your question and press **Enter**. Answers stream in real-time at ~20–25 tokens/second.
+Simply type your question and press **Enter**.
+
+---
+
+## :bar_chart: On-Device Benchmark & Performance
+
+To verify throughput and generation quality against recorded baselines:
+```bash
+task test-device
+```
+
+### Performance & Scaling Comparison (ESP32-S3 @ 240 MHz)
+
+| Parameter / Metric | Baseline (4-Layer, $D=128$) | Scaled (6-Layer, $D=160$) | Delta |
+| :--- | :--- | :--- | :--- |
+| **Model Size (INT4)** | ~2.5 MB | 3.87 MB | +54.8% |
+| **Layers ($L$)** | 4 | 6 | +50% |
+| **Hidden Dim ($D$)** | 128 | 160 | +25% |
+| **FFN Dim ($D_{ffn}$)** | 351 | 448 | +27.6% |
+| **Attention Heads** | 4 | 4 | Identical |
+| **Vocabulary Size** | 4096 (5655 PLE total) | 4096 (5655 PLE total) | Identical |
+| **Staged PSRAM Tensors** | 30 | 44 | +14 tensors |
+| **Free SRAM** | 320.7 KB | 310.5 KB | -10.2 KB |
+| **Free PSRAM** | 6.28 MB | 4.49 MB | -1.79 MB |
+| **Sampling Mode** | Greedy (argmax) | Top-$p$ ($p=0.9$, $T=0.75$, rep=32) | Configured |
+| **Average Throughput** | **14.1 tok/s** (71 ms/tok) | **6.6 tok/s** (151 ms/tok) | 47.1% baseline speed |
 
 ---
 
