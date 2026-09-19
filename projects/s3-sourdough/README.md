@@ -228,14 +228,18 @@ User:
 
 Simply type your question and press **Enter**.
 
-#### Runtime Sampling Controls
+#### Runtime Sampling & Acceleration Controls
 
-The on-device firmware supports dynamic adjustment of decoding parameters directly from the serial prompt:
+The on-device firmware supports dynamic adjustment of decoding and acceleration parameters directly from the serial prompt:
 * `/temp <val>`: Set softmax temperature between `0.0` and `2.0` (default: `0.75`).
 * `/topp <val>`: Set nucleus top-p probability threshold between `0.0` and `1.0` (default: `0.90`).
-* `/config`: Inspect active temperature, top-p, and repetition penalty window settings.
+* `/subvocab [on|off|<n>]`: Enable, disable, or adjust active sub-vocabulary clusters (`1`-`16`, default: `off`). Full-head SIMD is active by default for 100% domain accuracy at ~14.5 tok/s. Set to `on` or `4` for experimental maximum throughput (~16.5 tok/s).
+* `/simd`: Query status of ESP32-S3 PIE (Processor Instruction Extensions) 128-bit SIMD vector engine.
+* `/config`: Inspect active temperature, top-p, repetition window, sub-vocab clustering, and SIMD status.
 
 In addition, the autoregressive generation loop includes:
+* **ESP32-S3 PIE 128-bit SIMD Acceleration**: Computes INT8 dot products at 16 parallel multiply-accumulations per cycle using custom Xtensa LX7 PIE vector instructions (`ee.zero.accx`, `ee.vld.128.ip`, `ee.vmulas.s8.accx.ld.ip`, `rur.accx_0`).
+* **Sub-Vocabulary Prediction (Hierarchical Softmax)**: Token embeddings are pre-clustered into 16 spherical clusters with INT8 centroids. At inference, cluster centroids are scored first via SIMD, evaluating only candidate tokens in top-predicted clusters plus guaranteed specials (~233 tokens vs 1,882 tokens, an 86.8% reduction in dot products).
 * **Distance-Weighted Repetition Penalty**: Evaluates a rolling 32-token window, applying stronger suppression to recently emitted tokens (`factor = 0.80 + 0.15 * d / 32`).
 * **Adaptive Sentence Wrap-up**: Smoothly boosts `<eos>` and punctuation (`.`, `?`) logits as generation nears the token budget to avoid abruptly truncated sentences.
 
@@ -248,21 +252,25 @@ To verify throughput and generation quality against recorded baselines:
 task test-device
 ```
 
-### Performance & Scaling Comparison (ESP32-S3 @ 240 MHz)
+### Performance & Scaling Comparison Across Benchmark Runs (ESP32-S3 @ 240 MHz)
 
-| Parameter / Metric | Baseline (4-Layer, $D=128$) | Scaled (6-Layer, $D=160$) | Delta |
-| :--- | :--- | :--- | :--- |
-| **Model Size (INT4)** | ~2.5 MB | 3.87 MB | +54.8% |
-| **Layers ($L$)** | 4 | 6 | +50% |
-| **Hidden Dim ($D$)** | 128 | 160 | +25% |
-| **FFN Dim ($D_{ffn}$)** | 351 | 448 | +27.6% |
-| **Attention Heads** | 4 | 4 | Identical |
-| **Vocabulary Size** | 4096 (5655 PLE total) | 4096 (5655 PLE total) | Identical |
-| **Staged PSRAM Tensors** | 30 | 44 | +14 tensors |
-| **Free SRAM** | 320.7 KB | 310.5 KB | -10.2 KB |
-| **Free PSRAM** | 6.28 MB | 4.49 MB | -1.79 MB |
-| **Sampling Mode** | Greedy (argmax) | Top-$p$ ($p=0.9$, $T=0.75$, rep=32) | Configured |
-| **Average Throughput** | **14.1 tok/s** (71 ms/tok) | **6.6 tok/s** (151 ms/tok) | 47.1% baseline speed |
+| Parameter / Metric | Run 1: Baseline (4L, $D=128$) | Run 2: Configured (4L, $D=128$) | Run 3: Scaled (6L, $D=160$) | Run 4: Optimized Default (6L, SIMD Full Head) | Sub-Vocab Mode (6L, SIMD+SubVocab) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Model Size (INT4)** | ~2.5 MB | ~2.5 MB | 3.87 MB | 3.87 MB | 3.87 MB |
+| **Layers ($L$)** | 4 | 4 | 6 | 6 | 6 |
+| **Hidden Dim ($D$)** | 128 | 128 | 160 | 160 | 160 |
+| **FFN Dim ($D_{ffn}$)** | 351 | 351 | 448 | 448 | 448 |
+| **Attention Heads** | 4 | 4 | 4 | 4 | 4 |
+| **Vocabulary Size** | 4096 (5655 PLE total) | 4096 (5655 PLE total) | 4096 (5796 PLE total) | 4096 (5796 PLE total) | 4096 (5796 PLE total) |
+| **Output Head Method** | Full head (1,737 classes) | Full head (1,737 classes) | Full head (1,882 classes) | **Full head (1,882 classes, 100% exact)** | **Sub-Vocab (top 4/16 clusters, ~233 classes)** |
+| **SIMD Vector Engine** | Scalar C-loop | Scalar C-loop | Scalar C-loop | **ESP32-S3 PIE 128-bit SIMD (`ee.vmulas.s8`)** | **ESP32-S3 PIE 128-bit SIMD (`ee.vmulas.s8`)** |
+| **Staged PSRAM Tensors** | 30 | 30 | 44 | 44 | 44 |
+| **Free SRAM** | 320.7 KB | 320.7 KB | 310.5 KB | 306.4 KB | 306.4 KB |
+| **Free PSRAM** | 6.28 MB | 6.28 MB | 4.49 MB | 4.47 MB | 4.47 MB |
+| **Sampling Mode** | Greedy (argmax) | Top-$p$ ($p=0.9, T=0.75$) | Top-$p$ ($p=0.9, T=0.75$, rep=32) | Top-$p$ ($p=0.9, T=0.75$, rep=32) | Top-$p$ ($p=0.9, T=0.75$, rep=32) |
+| **Average Throughput** | **14.1 tok/s** (71 ms/tok) | **12.9 tok/s** (77.5 ms/tok) | **6.6 tok/s** (151.5 ms/tok) | **14.5 tok/s** (69.2 ms/tok) | **16.5 tok/s** (60.6 ms/tok) |
+| **Generation Fidelity** | High | High | High (flawless domain accuracy) | **High (flawless domain accuracy)** | Experimental (coherence trade-off) |
+| **Speedup vs Run 3** | — | — | Baseline (1.00×) | **+119.7% (2.20× speedup)** | **+150.0% (2.50× speedup)** |
 
 ---
 

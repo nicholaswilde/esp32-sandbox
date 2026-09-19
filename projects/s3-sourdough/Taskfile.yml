@@ -39,10 +39,16 @@ tasks:
     cmds:
       - uv run python -m research.sourdough.build_layout
 
+  subvocab:
+    desc: Generate sub-vocabulary cluster headers for hierarchical output head
+    cmds:
+      - uv run python pc_tools/generate_subvocab.py
+
   headers:
-    desc: Generate C++ headers (sourdough_words.h, sourdough_out2in.h) from vocab and layout
+    desc: Generate C++ headers (sourdough_words.h, sourdough_out2in.h, sourdough_subvocab.h) from vocab and layout
     cmds:
       - uv run python pc_tools/generate_vocab_headers.py
+      - uv run python pc_tools/generate_subvocab.py
 
 
   prepare:

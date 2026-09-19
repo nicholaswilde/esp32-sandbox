@@ -209,11 +209,40 @@ static inline void matvec_q8_range(const QT *t, const int8_t *xq, float x_scale,
   }
 }
 
-/* Scalar int8 dot product. */
+#if defined(__XTENSA__) && defined(CONFIG_IDF_TARGET_ESP32S3)
+#ifdef __cplusplus
+extern "C" {
+#endif
+int32_t simd_dotp_i8(const int8_t *a, const int8_t *b, int n);
+#ifdef __cplusplus
+}
+#endif
+#endif
+
+/* int8 dot product (accelerated with ESP32-S3 PIE 128-bit SIMD when 16-byte aligned). */
 static inline int32_t llm_dot_i8(const int8_t *a, const int8_t *b, int n) {
+#if defined(__XTENSA__) && defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (__builtin_expect((((uintptr_t)a | (uintptr_t)b) & 15) == 0, 1)) {
+    return simd_dotp_i8(a, b, n);
+  }
+#endif
   int32_t acc = 0;
   for (int i = 0; i < n; i++) acc += (int32_t)a[i] * (int32_t)b[i];
   return acc;
+}
+
+/* Compute dot product for a single row of an int8-staged matrix. */
+static inline float matvec_dot_row_i8(const QT *t, int r, const int8_t *xq, float x_scale) {
+  int g = t->group, ng = t->n_groups, cols = t->cols;
+  const int8_t *w = t->w8 + (size_t)r * cols;
+  const float *sc = t->scale8 + (size_t)r * ng;
+  float acc = 0.f;
+  for (int gi = 0; gi < ng; gi++) {
+    int begin = gi * g, end = begin + g;
+    if (end > cols) end = cols;
+    acc += (float)llm_dot_i8(w + begin, xq + begin, end - begin) * sc[gi];
+  }
+  return acc * x_scale;
 }
 
 /* Same arithmetic as matvec_q8_range, reading pre-unpacked int8 weights.
@@ -225,17 +254,8 @@ __attribute__((noinline))
 #endif
 static void matvec_i8_range(const QT *t, const int8_t *xq, float x_scale,
                             float *y, int row_begin, int row_end) {
-  int g = t->group, ng = t->n_groups, cols = t->cols;
   for (int r = row_begin; r < row_end; r++) {
-    const int8_t *w = t->w8 + (size_t)r * cols;
-    const float *sc = t->scale8 + (size_t)r * ng;
-    float acc = 0.f;
-    for (int gi = 0; gi < ng; gi++) {
-      int begin = gi * g, end = begin + g;
-      if (end > cols) end = cols;
-      acc += (float)llm_dot_i8(w + begin, xq + begin, end - begin) * sc[gi];
-    }
-    y[r] = acc * x_scale;
+    y[r] = matvec_dot_row_i8(t, r, xq, x_scale);
   }
 }
 
@@ -363,13 +383,13 @@ static inline size_t llm_stage_scale_offset(const QT *t) {
 }
 
 static inline size_t llm_stage_int8_bytes(const QT *t) {
-  return llm_stage_scale_offset(t)
+  return 16 + llm_stage_scale_offset(t)
        + (size_t)t->rows * t->n_groups * sizeof(float);
 }
 
 static inline void llm_stage_int8(QT *t, void *buffer) {
-  int8_t *w = (int8_t *)buffer;
-  float *sc = (float *)((uint8_t *)buffer + llm_stage_scale_offset(t));
+  int8_t *w = (int8_t *)(((uintptr_t)buffer + 15) & ~(uintptr_t)15);
+  float *sc = (float *)((uint8_t *)w + llm_stage_scale_offset(t));
   for (int r = 0; r < t->rows; r++) {
     const uint8_t *row = t->codes + (size_t)r * t->row_bytes;
     int8_t *dst = w + (size_t)r * t->cols;

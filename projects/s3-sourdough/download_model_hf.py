@@ -113,6 +113,7 @@ def regenerate_c_headers():
     """Regenerate vocab.h and tokenizer_asset.h from downloaded tokenizer.json."""
     gen_vocab = PROJECT_ROOT / "pc_tools" / "generate_vocab.py"
     gen_asset = PROJECT_ROOT / "pc_tools" / "generate_tokenizer_asset.py"
+    gen_subvocab = PROJECT_ROOT / "pc_tools" / "generate_subvocab.py"
 
     if gen_vocab.exists():
         print("\nUpdating C decoding header (src/generated/vocab.h)...")
@@ -120,6 +121,9 @@ def regenerate_c_headers():
     if gen_asset.exists():
         print("Updating C encoding header (src/generated/tokenizer_asset.h)...")
         subprocess.run([sys.executable, str(gen_asset)], check=True)
+    if gen_subvocab.exists():
+        print("Updating sub-vocab cluster header (src/generated/sourdough_subvocab.h)...")
+        subprocess.run([sys.executable, str(gen_subvocab)], check=True)
 
 
 def main():
