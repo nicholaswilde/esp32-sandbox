@@ -240,6 +240,10 @@ def execute_build(
             if gen_headers.exists() and (data_sourdough / "vocab.json").exists() and (data_sourdough / "layout.json").exists():
                 subprocess.run([sys.executable, str(gen_headers)], check=False)
 
+            gen_tok = pc_tools_dir / "generate_tokenizer_asset.py"
+            if gen_tok.exists() and (data_sourdough / "tokenizer.json").exists():
+                subprocess.run([sys.executable, str(gen_tok)], check=False)
+
             log("Training & INT4 quantization finished successfully! Artifacts saved in pc_tools/ and runs/.")
 
         finally:

@@ -44,12 +44,12 @@ class Config:
     # output alphabet, so the head is a separate tensor and a sampled index is a
     # class that has to be mapped before it can be fed back in.
     out_vocab_size: int | None = None
-    d_model: int = 128
+    d_model: int = 160
     n_layers: int = 6
     n_heads: int = 4
-    ffn_hidden: int = 256
+    ffn_hidden: int = 448
     seq_len: int = 512
-    ple_dim: int = 64
+    ple_dim: int = 128
     rope_theta: float = 10000.0
 
     @property

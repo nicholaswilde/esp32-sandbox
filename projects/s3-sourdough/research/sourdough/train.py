@@ -156,11 +156,12 @@ def main():
     parser.add_argument("--arm", choices=["dense", "ple", "tiered"], default="ple", help="Model architecture")
     parser.add_argument("--vocab", type=int, default=2048, help="Vocabulary size (default: 2048)")
     parser.add_argument("--seq-len", type=int, default=128, help="Context sequence length (default: 128)")
-    parser.add_argument("--d-model", type=int, default=128, help="Model embedding dimension (default: 128)")
-    parser.add_argument("--n-layers", type=int, default=4, help="Number of transformer layers (default: 4)")
+    parser.add_argument("--d-model", type=int, default=160, help="Model embedding dimension (default: 160)")
+    parser.add_argument("--n-layers", type=int, default=6, help="Number of transformer layers (default: 6)")
     parser.add_argument("--n-heads", type=int, default=4, help="Number of attention heads (default: 4)")
+    parser.add_argument("--ffn-hidden", type=int, default=448, help="FFN hidden dimension (default: 448)")
     parser.add_argument("--ple-dim", type=int, default=128, help="PLE dimension per layer (default: 128)")
-    parser.add_argument("--target-core", type=int, default=1000000, help="Target core param count (default: 1M)")
+    parser.add_argument("--target-core", type=int, default=None, help="Target core param count (default: None, uses --ffn-hidden)")
     parser.add_argument("--batch-size", type=int, default=16, help="Batch size (default: 16)")
     parser.add_argument("--micro-batch-size", type=int, default=4, help="Micro batch size for memory savings")
     parser.add_argument("--steps", type=int, default=600, help="Total training steps (default: 600)")
@@ -205,8 +206,12 @@ def main():
             d_model=args.d_model,
             n_layers=args.n_layers,
             n_heads=args.n_heads,
+            ffn_hidden=args.ffn_hidden,
         )
-        model = make_model(args.arm, args.target_core, base).to(device)
+        if args.target_core is not None:
+            model = make_model(args.arm, args.target_core, base).to(device)
+        else:
+            model = make_model(args.arm, 0, base, fixed_ffn=args.ffn_hidden).to(device)
 
         train_b = AsymmetricBatcher("train", micro_bs, args.seq_len, device, asym_dir, pad_id=pad_id, seed=args.seed)
         val_b = AsymmetricBatcher("val", micro_bs, args.seq_len, device, asym_dir, pad_id=pad_id)
@@ -224,8 +229,12 @@ def main():
             d_model=args.d_model,
             n_layers=args.n_layers,
             n_heads=args.n_heads,
+            ffn_hidden=args.ffn_hidden,
         )
-        model = make_model(args.arm, args.target_core, base).to(device)
+        if args.target_core is not None:
+            model = make_model(args.arm, args.target_core, base).to(device)
+        else:
+            model = make_model(args.arm, 0, base, fixed_ffn=args.ffn_hidden).to(device)
         train_b = Batcher("train", micro_bs, args.seq_len, device, dataset_dir, seed=args.seed)
         val_b = Batcher("val", micro_bs, args.seq_len, device, dataset_dir)
 

@@ -133,6 +133,17 @@ static void emit_word(int best, int &pieces_out) {
 }
 
 // ---- Sampling Helpers ------------------------------------------------------
+#ifndef DEFAULT_TEMPERATURE
+#define DEFAULT_TEMPERATURE 0.75f
+#endif
+#ifndef DEFAULT_TOP_P
+#define DEFAULT_TOP_P 0.90f
+#endif
+#define RECENT_WINDOW 32
+
+static float g_temperature = DEFAULT_TEMPERATURE;
+static float g_topp = DEFAULT_TOP_P;
+
 typedef struct {
   float prob;
   int index;
@@ -293,9 +304,13 @@ void setup() {
 
   probindex = (ProbIndex *)ps_or_die(model.out_vocab * sizeof(ProbIndex), "probindex");
 
+  rng_seed ^= (uint64_t)esp_timer_get_time();
+
   Serial.printf("[s3-sourdough] Free SRAM: %.1f KB | Free PSRAM: %.2f MB\n",
                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024.0,
                 heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1048576.0);
+  Serial.printf("[s3-sourdough] Sampling: temp=%.2f, top_p=%.2f, rep_window=%d\n",
+                g_temperature, g_topp, RECENT_WINDOW);
   Serial.println("\nReady! Enter your sourdough question below:\n");
   Serial.print("User: ");
 }
@@ -312,6 +327,33 @@ void loop() {
 
   // Echo user question
   Serial.println(prompt);
+
+  // Interactive parameter commands
+  if (prompt.startsWith("/temp")) {
+    float t = prompt.substring(prompt.indexOf(' ') + 1).toFloat();
+    if (t >= 0.0f && t <= 2.0f) {
+      g_temperature = t;
+      Serial.printf("Assistant: Temperature set to %.2f\n\nUser: ", g_temperature);
+    } else {
+      Serial.printf("Assistant: Invalid temperature (0.0-2.0). Current: %.2f\n\nUser: ", g_temperature);
+    }
+    return;
+  }
+  if (prompt.startsWith("/topp")) {
+    float p = prompt.substring(prompt.indexOf(' ') + 1).toFloat();
+    if (p > 0.0f && p <= 1.0f) {
+      g_topp = p;
+      Serial.printf("Assistant: Top-p set to %.2f\n\nUser: ", g_topp);
+    } else {
+      Serial.printf("Assistant: Invalid top-p (0.0-1.0). Current: %.2f\n\nUser: ", g_topp);
+    }
+    return;
+  }
+  if (prompt == "/config") {
+    Serial.printf("Assistant: Config -> temp=%.2f | top_p=%.2f | rep_window=%d\n\nUser: ",
+                  g_temperature, g_topp, RECENT_WINDOW);
+    return;
+  }
 
   // 1. Encode prompt with on-device BPE tokenizer
   uint16_t prompt_tokens[128];
@@ -337,27 +379,46 @@ void loop() {
   int64_t t0 = esp_timer_get_time();
   int pieces_out = 0;
   int max_pieces = 60;
-  int recent[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
+  int recent[RECENT_WINDOW];
+  for (int i = 0; i < RECENT_WINDOW; i++) recent[i] = -1;
 
   for (int step = 0; step < max_pieces && pos < model.c.seq_len; step++) {
-    // Mild repetition penalty on recently emitted classes
-    for (int r = 0; r < 8; r++) {
-      int prev = recent[r];
+    // Suppress non-word special tokens (<pad>, <bos>, and strongly suppress <unk>)
+    s.logits[SOURDOUGH_PAD] = -1e30f;
+    s.logits[SOURDOUGH_BOS] = -1e30f;
+    s.logits[SOURDOUGH_UNK] -= 10.0f;
+
+    // Distance-weighted repetition penalty across recent window
+    for (int d = 1; d <= RECENT_WINDOW && d <= step; d++) {
+      int idx = (step - d + RECENT_WINDOW) % RECENT_WINDOW;
+      int prev = recent[idx];
       if (prev >= 0 && prev < SOURDOUGH_WORD_COUNT) {
-        if (s.logits[prev] > 0) s.logits[prev] *= 0.85f;
-        else s.logits[prev] *= 1.15f;
+        // More recent tokens get stronger penalty (d=1: factor=0.80, d=32: factor=0.95)
+        float factor = 0.80f + 0.15f * ((float)(d - 1) / (float)RECENT_WINDOW);
+        if (s.logits[prev] > 0) s.logits[prev] *= factor;
+        else s.logits[prev] *= (2.0f - factor);
       }
     }
 
-    // Greedy decoding over output classes
-    int best = 0;
-    for (int k = 1; k < SOURDOUGH_WORD_COUNT; k++) {
-      if (s.logits[k] > s.logits[best]) best = k;
+    // Adaptive EOS and punctuation boosting near output budget end to wrap up cleanly
+    if (step >= max_pieces - 10) {
+      float boost = (float)(step - (max_pieces - 10) + 1) * 1.5f;
+      s.logits[SOURDOUGH_EOS] += boost;
+      s.logits[5] += boost * 0.5f; // index 5 is '.'
     }
-    if (best == SOURDOUGH_EOS) break;
-    recent[step % 8] = best;
 
+    // Nucleus / Top-p sampling with temperature
+    int best = sample(s.logits, SOURDOUGH_WORD_COUNT, g_temperature, g_topp, probindex);
+    if (best == SOURDOUGH_EOS) break;
+
+    recent[step % RECENT_WINDOW] = best;
     emit_word(best, pieces_out);
+
+    // If near end of output budget and completed a sentence, terminate cleanly
+    if (step >= max_pieces - 8 && (best == 5 || best == 8)) { // '.' or '?'
+      break;
+    }
+
     llm_forward(&model, SOURDOUGH_OUT2IN[best], pos++, &s);
   }
 

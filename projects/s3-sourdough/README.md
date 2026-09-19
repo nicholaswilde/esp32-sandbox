@@ -10,9 +10,10 @@ Inspired by [slvDev/esp32-ai-barista](https://huggingface.co/slvDev/esp32-ai-bar
 
 ## :sparkles: Features
 
-*   **Architecture**: Per-Layer Embeddings (PLE) micro-LLM (~2.3M params).
+*   **Architecture**: Per-Layer Embeddings (PLE) micro-LLM ($L=6$ layers, $D=160$ hidden dim, $F=448$ FFN dim, ~7.8M total params, ~2.28M core params).
 *   **Target Hardware**: ESP32-S3 with ≥ 16MB Flash and Octal PSRAM (e.g. `ESP32-S3-DevKitC-1-N16R8`).
-*   **Vocabulary**: 2,048-token ByteLevel BPE tokenizer tailored for baking terms.
+*   **Memory Footprint**: ~3.49 MB PSRAM total (~2.55 MB staged weights, ~0.94 MB KV cache, ~7 KB logits), leaving > 4.5 MB headroom on 8 MB PSRAM; and ~34.25 KB internal SRAM, well below the 327 KB internal SRAM ceiling.
+*   **Vocabulary**: Asymmetric untied-head vocabulary (5,655 input tokens, 1,737 active output word classes) tailored for baking terms.
 *   **Quantization**: INT4 grouped quantization (`group_size = 128`) mapped directly from flash via `esp_partition_mmap` at offset `0x110000`.
 *   **Troubleshooting Domains**:
     1.  **Starter Health**: Hooch, sluggish rising, acetone/nail polish smell, mold detection, feeding ratios (1:1:1 vs 1:5:5), refrigeration, stiff starters (50-60%), discard shelf life, tap water/chlorine effects, flour selection.
