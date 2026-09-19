@@ -654,9 +654,107 @@ QA_ENTRIES: List[Dict] = [
             "No-knead sourdough works via enzymatic autolysis, but without stretch and folds the loaf lacks vertical surface tension. It will produce a flatter loaf with slightly more irregular crumb.",
         ],
     },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "How do I adjust bulk fermentation during cold winter months?",
+            "My kitchen is 65F and BF is taking over 10 hours. How to speed it up?",
+            "Winter sourdough baking adjustments for slow fermentation.",
+            "My dough is barely rising in a cold room. What should I do?",
+            "How to keep sourdough dough warm during winter bulk fermentation?",
+        ],
+        "answers": [
+            "In winter (sub-68°F/20°C), warm your mix water to 85°F to 90°F to reach a 78°F final dough temperature. Increase starter inoculation to 25% or 30%, or proof your dough inside an oven with the interior light turned on.",
+            "Cold kitchens drastically slow yeast activity. Use 85°F mixing water, bump starter from 20% to 25%, and place the bowl in a proofing box or microwave with a mug of boiling water to maintain 75°F to 78°F.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "How do I manage sourdough bulk fermentation in hot summer weather?",
+            "My kitchen is 85F and dough over-ferments in 2 hours. How to slow BF?",
+            "Summer sourdough baking adjustments for hot temperatures.",
+            "How to prevent sourdough from turning into sticky soup in warm weather?",
+            "Fermentation is running away in high heat. What should I change?",
+        ],
+        "answers": [
+            "In heat above 80°F (27°C), reduce starter inoculation to 10% or 15% and mix with chilled ice water. Watch dough volume rather than the clock, stopping bulk when dough rises only 30% to 40% before shaping.",
+            "Hot temperatures accelerate bacterial acid and enzyme proteolysis. Cut starter to 10%, use refrigerated water to target a 72°F dough temp, and transfer to the fridge early once dough shows gentle bubbling.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "How does starter inoculation percentage affect bulk fermentation timing?",
+            "When should I use 10% vs 20% vs 30% starter in sourdough bread?",
+            "Can I use less starter for a slow overnight room temperature bulk?",
+            "Scaling levain percentage based on kitchen temperature and schedule.",
+            "How does levain ratio control sourdough rise time?",
+        ],
+        "answers": [
+            "Inoculation controls fermentation pace: 10% levain allows a slow 8 to 12 hour bulk at room temperature, 20% is standard for 4 to 6 hour rise, and 30% speeds up winter baking or tight schedules.",
+            "Use 10% starter for overnight bulk or hot kitchens to prevent over-fermentation. Use 20% for standard daytime bakes at 74°F to 78°F, and 25% to 30% to accelerate rise in chilly kitchens below 68°F.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "What is Desired Dough Temperature (DDT) and how do I calculate it?",
+            "How to calculate water temperature to hit my target final dough temp (FDT)?",
+            "Why is final dough temperature important in sourdough baking?",
+            "Formula for desired water temperature in bread baking.",
+            "How do room temp, flour temp, and friction factor determine water temp?",
+        ],
+        "answers": [
+            "Target a 78°F (26°C) FDT for optimal yeast and bacterial balance. Calculate water temp using: (3 × DDT) - (Room Temp + Flour Temp + Friction Factor). Hand mixing friction is roughly 2°F to 5°F.",
+            "DDT controls predictable fermentation. Multiply desired temp (e.g. 78°F) by 3, then subtract room temperature, flour temperature, and mixing friction (usually 2°F for hand mixing) to find your target water temp.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "My sourdough bread came out flat with a pale crust and dense gummy crumb.",
+            "Loaf is flat and pale with heavy rubbery texture. What went wrong?",
+            "Why is my sourdough loaf completely flat, pale white, and gummy inside?",
+            "Troubleshooting flat dense bread with blond unbrowned crust.",
+            "Flat pale loaf with tight dense gummy crumb diagnosis.",
+        ],
+        "answers": [
+            "This combination indicates severe under-fermentation from a weak starter or short bulk. Yeast produced too little gas, while unfermented starches left insufficient simple sugars for Maillard browning, yielding a dense, pale, rubbery loaf.",
+            "A flat, pale, gummy loaf means the dough was severely under-proofed. The starter was too weak or bulk fermentation ended too early. Allow dough to ferment until noticeably aerated, domed, and increased 50% to 75% in volume.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "My sourdough dough turned into a sticky puddle, smells strongly sour, and tears.",
+            "Dough is melting into a puddle, super sticky, and won't hold shape after BF.",
+            "Why did my dough turn to soup and tear when trying to shape?",
+            "Dough smells like pure vinegar and liquefies during shaping.",
+            "Diagnosing sticky liquid dough that tore apart during bulk fermentation.",
+        ],
+        "answers": [
+            "This is classic severe over-fermentation. Excessive lactic and acetic acids accumulated, activating proteolytic enzymes that digested the gluten matrix into liquid soup. Discard into a focaccia pan or discard recipes; it cannot be shaped.",
+            "Over-fermentation causes acidity to destroy the gluten network, turning dough into a slack puddle that tears easily and smells sharply sour. Shorten bulk fermentation or reduce starter percentage next time.",
+        ],
+    },
+    {
+        "category": "bulk_fermentation",
+        "questions": [
+            "My sourdough has giant holes at the very top and dense gummy crumb at the bottom.",
+            "Why does my loaf have huge tunnels under the crust but dense bread underneath?",
+            "What is fool's crumb in sourdough and how do I fix it?",
+            "Bread has massive caves along the top crust and a compact dense base.",
+            "Diagnosing giant cavities with dense gummy bottom in sourdough loaf.",
+        ],
+        "answers": [
+            "This is 'fool's crumb', a telltale sign of under-fermentation. Pockets of trapped gas expanded violently into top cavities under intense oven heat, while the surrounding cold, undeveloped dough remained dense and gummy. Extend your bulk fermentation.",
+            "Fool's crumb occurs when under-fermented dough with weak gluten is baked too soon. Large yeast bubbles rise and merge at the crown while the base stays dense. Let dough rise until evenly bubbly throughout before shaping.",
+        ],
+    },
 
     # =========================================================================
-    # 3. Hydration & Shaping (23 topics)
+    # 3. Hydration & Shaping (27 topics)
     # =========================================================================
     {
         "category": "hydration_shaping",
@@ -980,9 +1078,65 @@ QA_ENTRIES: List[Dict] = [
             "Ash percentage indicates mineral and bran levels in flour. High ash flour boosts enzymatic activity and speeds up fermentation, yielding complex wheaty aroma and deeper crust caramelization.",
         ],
     },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How does rye flour affect sourdough dough texture and gluten?",
+            "Why is dough with rye flour so sticky and difficult to shape?",
+            "What are pentosans in rye flour and how do they impact bread?",
+            "Can I knead 100% rye sourdough like wheat bread?",
+            "Tips for handling and hydrating sourdough dough containing rye.",
+        ],
+        "answers": [
+            "Rye contains high levels of pentosans (mucilage gums) that absorb up to 8x their weight in water, making dough exceptionally sticky. Rye lacks glutenin, so it cannot form an elastic gluten network. Handle gently and use wet hands.",
+            "Pentosans in rye compete with gluten proteins for water and coat starch granules, creating a clay-like sticky dough. Keep rye to 10% to 20% for artisan open crumb, or bake pure rye in a loaf tin.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "Why does whole wheat flour make sourdough bread denser and harder to rise?",
+            "How do bran flakes in whole wheat flour affect gluten development?",
+            "How to get an open crumb with whole wheat sourdough bread.",
+            "Adjusting hydration and autolyse when using 100% whole wheat flour.",
+            "How does whole grain flour change sourdough fermentation speed?",
+        ],
+        "answers": [
+            "Whole wheat bran flakes have sharp edges that physically slice developing gluten strands, while absorbing water more slowly. Perform a 1 to 2 hour autolyse to soften bran, increase hydration by 5% to 10%, and expect faster fermentation.",
+            "Sharp bran particles shred gluten and reduce loaf volume. To counter this, give whole wheat dough a long warm autolyse to hydrate bran, add 5% to 8% extra water, and handle dough gently during shaping.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "How do ancient grains like spelt and einkorn behave in sourdough bread?",
+            "Why does spelt sourdough dough spread flat and feel slack?",
+            "Differences between einkorn, spelt, and standard wheat in bread making.",
+            "How to adjust hydration when baking with ancient grains like spelt.",
+            "Tips for strengthening gluten when using spelt or emmer flour.",
+        ],
+        "answers": [
+            "Ancient grains like spelt and einkorn have highly extensible but weak, fragile gluten that slacks and spreads easily. Reduce recipe hydration by 5% to 8%, shorten mixing, and shape firmly using a banneton for support.",
+            "Spelt and einkorn have delicate gluten structures prone to over-kneading and spreading. Limit folds, lower water by 5% to 10%, and consider blending with 50% high-protein bread flour for reliable vertical oven spring.",
+        ],
+    },
+    {
+        "category": "hydration_shaping",
+        "questions": [
+            "What is diastatic malt powder and should I use it in sourdough?",
+            "How does diastatic malt powder improve sourdough fermentation and browning?",
+            "Difference between diastatic and non-diastatic malt powder in bread.",
+            "How much diastatic malt powder to add to sourdough dough?",
+            "Why is my sourdough loaf pale despite a long bake?",
+        ],
+        "answers": [
+            "Diastatic malt contains active amylase enzymes that convert flour starches into fermentable sugars, accelerating yeast activity and boosting crust browning. Use 0.5% to 1% (2g to 5g per 500g flour), especially with un-malted organic flours.",
+            "Diastatic malt powder provides active enzymes that break down starch for yeast food and rich golden-brown Maillard crust color. Never exceed 1% of total flour weight, as excess amylase can cause a gummy, wet crumb.",
+        ],
+    },
 
     # =========================================================================
-    # 4. Scoring, Baking & Crust (20 topics)
+    # 4. Scoring, Baking & Crust (26 topics)
     # =========================================================================
     {
         "category": "scoring_baking",
@@ -1262,6 +1416,90 @@ QA_ENTRIES: List[Dict] = [
         "answers": [
             "A thick rock-hard bottom crust is caused by excessive bottom heat conducted directly through cast iron. Place a cold rimmed cookie sheet on the lower oven rack below the baker to buffer radiant heat.",
             "Scorched, tough bottom crusts happen when bottom heating elements radiate directly into heavy iron. Move your rack up one notch and slide an empty baking pan on the rack below to diffuse heat.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "How do I open bake sourdough bread using lava rocks for steam?",
+            "How to generate professional steam in a home oven without a Dutch oven.",
+            "Open baking sourdough on a baking steel with lava rock steam pan.",
+            "Step-by-step steam setup for open baking sourdough baguettes and batards.",
+            "How much water and lava rocks to use for oven steam?",
+        ],
+        "answers": [
+            "Place a heavy cast iron skillet filled with unglazed lava rocks on the bottom oven rack during preheat. Load your scored loaf onto a baking steel, pour 1 cup of boiling water over the rocks, and bake with steam for 20 minutes.",
+            "Lava rocks provide immense surface area to instantly vaporize water. Preheat rocks for 45 minutes at 475°F (245°C), load dough on steel, pour boiling water into the rock pan, close door, and vent steam after 20 minutes.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "What is the difference between a baking steel and a baking stone for sourdough?",
+            "Is a baking steel better than a pizza stone for sourdough bread?",
+            "Why does baking steel give better oven spring than ceramic stone?",
+            "Should I buy a baking steel or stone for open baking sourdough?",
+            "Comparing heat transfer of baking steel vs cordierite stone.",
+        ],
+        "answers": [
+            "Baking steel conducts heat approximately 18 times faster than ceramic stone. This rapid energy transfer into the loaf bottom creates explosive initial oven spring, thinner blistered bottom crusts, and faster bake times.",
+            "Steel has much higher thermal conductivity and heat capacity than stone. It dumps heat instantly into the cold dough base, preventing bottom puddling and maximizing vertical oven spring during the first 10 minutes.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "How do I bake sourdough bread in a Pullman loaf pan for sandwich bread?",
+            "Making soft sourdough sandwich bread in a lidded Pullman pan.",
+            "How full should dough be in a Pullman pan before baking with lid?",
+            "Baking temperature and time for sourdough Pullman sandwich loaf.",
+            "Tips for square sourdough sandwich bread with soft thin crust.",
+        ],
+        "answers": [
+            "Proof dough in the greased Pullman pan until it reaches 1 inch below the rim (open pan) or 0.5 inch below rim if using the lid. Bake at 375°F to 400°F (190°C to 205°C) for 35 to 40 minutes for uniform, soft sandwich slices.",
+            "For square sandwich bread, slide the oiled lid on when dough proofs to within 1/2 inch of the top. Bake at 375°F (190°C) for 30 minutes with lid on, then remove lid for 10 minutes to brown the golden top crust.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "How can I bake sourdough bread without a Dutch oven?",
+            "Alternatives to Dutch oven for baking artisan sourdough bread.",
+            "Can I bake sourdough under an inverted roasting pan or metal bowl?",
+            "Baking sourdough on a regular cookie sheet without cast iron.",
+            "How to trap steam without an expensive Dutch oven.",
+        ],
+        "answers": [
+            "Invert a large deep stainless steel bowl or metal roasting pan over your dough on a preheated baking sheet or stone. This traps the dough's own evaporating moisture like a miniature cloche for the first 20 minutes.",
+            "You can use an inverted deep roasting pan or turkey roaster over a preheated pizza stone. Alternatively, bake on a rimmed sheet pan with a second deep pan filled with boiling water and rolled towels beneath it.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "My sourdough bread has a thick leathery crust, dull grey finish, and no ear.",
+            "Why is my crust so tough and chewy with a dull grey look instead of blisters?",
+            "Loaf crust is thick like leather and didn't open at the score mark.",
+            "What causes a tough rubbery crust with zero blisters or ear?",
+            "Troubleshooting leathery dull sourdough crust lacking shine.",
+        ],
+        "answers": [
+            "A leathery, dull grey crust with no ear is caused by lack of steam during early baking. Without steam, the outer skin dries out and hardens immediately, choking oven spring and preventing starch gelatinization that creates crisp blistered shine.",
+            "Inadequate steam causes the dough surface to bake into a dry barrier before oven spring finishes. Ensure your Dutch oven lid seals tightly or add 2 ice cubes under parchment to keep the crust supple for maximum rise.",
+        ],
+    },
+    {
+        "category": "scoring_baking",
+        "questions": [
+            "Why is my sourdough bread gummy and wet inside even though it sounds hollow?",
+            "Crumb is gummy, wet, and sticks to the knife despite fully baking.",
+            "My sourdough bread crust is brown and hollow, but the inside is rubbery paste.",
+            "Bread reached 208F internal temp but interior is still wet and gummy.",
+            "Did cutting my sourdough bread hot make the crumb gummy?",
+        ],
+        "answers": [
+            "Cutting hot sourdough is the number one cause of gummy crumb. As bread cools, gelatinized starches set through retrogradation and internal steam evaporates. Wait at least 2 hours (or until completely room temperature) before slicing.",
+            "If sliced while warm, steam condenses back into liquid water and the soft starch structure collapses into rubbery gum on your knife blade. Always allow loaves to cool fully on a wire rack for 2 to 4 hours.",
         ],
     },
 

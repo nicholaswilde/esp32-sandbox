@@ -43,6 +43,10 @@ CATEGORY_PREFIXES: Dict[str, List[str]] = {
         "Hey, ",
         "Sourdough question: ",
         "Troubleshooting question: ",
+        "Hey, quick sourdough question: ",
+        "Need sourdough advice: ",
+        "Troubleshooting my bake: ",
+        "First time baker here, ",
     ],
     "starter_health": [
         "My starter is 2 weeks old, ",
@@ -52,6 +56,7 @@ CATEGORY_PREFIXES: Dict[str, List[str]] = {
         "Starter troubleshooting: ",
         "My sourdough culture smells strange: ",
         "Checked my starter this morning: ",
+        "Feeding 1:5:5 with unbleached flour: ",
     ],
     "bulk_fermentation": [
         "My kitchen is at 70F, ",
@@ -60,6 +65,14 @@ CATEGORY_PREFIXES: Dict[str, List[str]] = {
         "During bulk fermentation: ",
         "Checking dough at 78F: ",
         "Fermentation question: ",
+        "Doing my BF at 68F, ",
+        "My kitchen RT is 65F, ",
+        "Aiming for 78F FDT, ",
+        "After 4 sets of S&F, ",
+        "My BF has been going for 6 hrs, ",
+        "Checking dough during bulk: ",
+        "Winter baking in cold kitchen: ",
+        "Summer BF at 85F: ",
     ],
     "hydration_shaping": [
         "Using 75% hydration dough, ",
@@ -68,6 +81,12 @@ CATEGORY_PREFIXES: Dict[str, List[str]] = {
         "Using bread flour and whole wheat, ",
         "While shaping my batard: ",
         "Dough handling question: ",
+        "Using 80% AP and 20% WW, ",
+        "Mixing AP flour instead of bread flour, ",
+        "Handling high hydration WW dough, ",
+        "Doing coil folds every 45 min, ",
+        "Working with rye and spelt blend, ",
+        "Handling sticky rye dough: ",
     ],
     "scoring_baking": [
         "Baking in a cast iron Dutch oven, ",
@@ -76,6 +95,12 @@ CATEGORY_PREFIXES: Dict[str, List[str]] = {
         "Open baking with steam tray, ",
         "Baking question: ",
         "Checking crust doneness: ",
+        "Baking in a cast iron DO with ice cubes, ",
+        "Baking on a baking steel at 475F, ",
+        "Open baking with lava rocks, ",
+        "Pulled the DO lid off after 20 mins, ",
+        "Using a Pullman pan for sandwich bread, ",
+        "Baking without a Dutch oven, ",
     ],
     "bakers_math": [
         "Formulating a recipe: ",
@@ -83,6 +108,9 @@ CATEGORY_PREFIXES: Dict[str, List[str]] = {
         "Scaling for two loaves: ",
         "Calculating percentages: ",
         "Recipe math question: ",
+        "Calculating baker's percentages for 2 loaves: ",
+        "Doing baker's math with 15% levain: ",
+        "Adjusting hydration formula: ",
     ],
     "guardrails": [
         "",
@@ -110,6 +138,10 @@ COMMON_TYPOS = {
     "temperature": ["temp", "temperatue"],
     "refrigerator": ["fridge", "refridgerator"],
     "flour": ["flouer"],
+    "proofing": ["profing", "prooving"],
+    "autolyse": ["autolyze", "autolyse"],
+    "boule": ["boole"],
+    "batard": ["batarde"],
 }
 
 CASUAL_CONTRACTIONS = [
@@ -119,11 +151,32 @@ CASUAL_CONTRACTIONS = [
     ("it's", "its"),
     ("what's", "whats"),
     ("doesn't", "doesnt"),
+    ("couldn't", "couldnt"),
+    ("haven't", "havent"),
+    ("can't", "cant"),
+]
+
+# Baking abbreviations frequently used in colloquial baking forums and queries
+BAKING_ABBREVIATIONS = [
+    ("bulk fermentation", "BF"),
+    ("Bulk fermentation", "BF"),
+    ("final dough temperature", "FDT"),
+    ("desired dough temperature", "DDT"),
+    ("all-purpose flour", "AP flour"),
+    ("all-purpose", "AP"),
+    ("whole wheat flour", "WW flour"),
+    ("whole wheat", "WW"),
+    ("Dutch oven", "DO"),
+    ("dutch oven", "DO"),
+    ("stretch and folds", "S&F"),
+    ("stretch and fold", "S&F"),
+    ("coil folds", "CF"),
+    ("room temperature", "RT"),
 ]
 
 
 def inject_noise(text: str, rng: random.Random) -> str:
-    """Inject controlled conversational noise (casing, punctuation, apostrophes, rare typos)."""
+    """Inject controlled conversational noise (casing, punctuation, apostrophes, abbreviations, rare typos)."""
     # 1. Punctuation and casing noise
     rand_style = rng.random()
     if rand_style < 0.25:
@@ -138,7 +191,14 @@ def inject_noise(text: str, rng: random.Random) -> str:
         for formal, casual in CASUAL_CONTRACTIONS:
             text = text.replace(formal, casual).replace(formal.capitalize(), casual.capitalize())
 
-    # 3. Controlled realistic typo (5% probability, strictly on common domain keywords)
+    # 3. Colloquial baking abbreviation replacement (15% chance)
+    if rng.random() < 0.15:
+        for formal, abbr in BAKING_ABBREVIATIONS:
+            if formal in text:
+                text = text.replace(formal, abbr)
+                break
+
+    # 4. Controlled realistic typo (5% probability, strictly on common domain keywords)
     if rng.random() < 0.05:
         words = text.split()
         for i, w in enumerate(words):
